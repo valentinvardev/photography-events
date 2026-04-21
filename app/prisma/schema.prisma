@@ -142,6 +142,7 @@ model Purchase {
     downloadTokenExpires    DateTime?
     downloadCount           Int            @default(0)
     firstDownloadAt         DateTime?
+    photoIds                String?        // JSON array of purchased photo IDs
     isPublic                Boolean        @default(false)
     notes                   String?        @db.Text
     createdAt               DateTime       @default(now())
