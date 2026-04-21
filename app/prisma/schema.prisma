@@ -1,48 +1,31 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
     provider = "prisma-client-js"
     output   = "../generated/prisma"
 }
 
 datasource db {
-    provider = "postgresql"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-    url      = env("DATABASE_URL")
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+// ─── NextAuth ────────────────────────────────────────────────────────────────
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
-// Necessary for Next auth
 model Account {
     id                       String  @id @default(cuid())
     userId                   String
     type                     String
     provider                 String
     providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
+    refresh_token            String? @db.Text
+    access_token             String? @db.Text
     expires_at               Int?
     token_type               String?
     scope                    String?
-    id_token                 String? // @db.Text
+    id_token                 String? @db.Text
     session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     refresh_token_expires_in Int?
+    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@unique([provider, providerAccountId])
 }
@@ -61,9 +44,15 @@ model User {
     email         String?   @unique
     emailVerified DateTime?
     image         String?
+    passwordHash  String?
+    role          UserRole  @default(ADMIN)
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+}
+
+enum UserRole {
+    ADMIN
+    PHOTOGRAPHER
 }
 
 model VerificationToken {
@@ -72,4 +61,146 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+// ─── Photography Domain ──────────────────────────────────────────────────────
+
+model Collection {
+    id               String    @id @default(cuid())
+    title            String
+    description      String?   @db.Text
+    coverUrl         String?   // Storage key or public URL for cover image
+    logoUrl          String?   // Storage key or public URL for logo
+    bannerUrl        String?   // Storage key or public URL for banner
+    bannerFocalY     Float     @default(0.5)
+    slug             String    @unique
+    eventDate        DateTime?
+    location         String?
+    pricePerBib      Decimal   @default(0) @db.Decimal(10, 2)
+    currency         String    @default("ARS")
+    isPublished      Boolean   @default(false)
+    isFree           Boolean   @default(false) // True = photos accessible without purchase
+    // Watermark image applied to previews for this collection (storage key)
+    watermarkStorageKey String?
+    // AWS Rekognition collection ID for face search indexing
+    rekCollectionId  String?
+    createdAt        DateTime  @default(now())
+    updatedAt        DateTime  @updatedAt
+
+    photos      Photo[]
+    purchases   Purchase[]
+    faceRecords FaceRecord[]
+
+    @@index([slug])
+    @@index([isPublished])
+    @@index([eventDate])
+}
+
+// Photos belong directly to a Collection; bibNumber is OCR-detected from filename/subfolder
+model Photo {
+    id                 String    @id @default(cuid())
+    collectionId       String
+    bibNumber          String?   // Null = not yet detected or no visible bib
+    storageKey         String    // Private bucket path (original full-quality file)
+    filename           String
+    mimeType           String?   // e.g. "image/jpeg" — used to reject HEIC/HEIF
+    fileSize           Int?      // Bytes
+    width              Int?
+    height             Int?
+    order              Int       @default(0)
+    previewKey         String?   // Watermarked preview storage key
+    previewGeneratedAt DateTime? // Tracks staleness; regenerate when watermark changes
+    isPublic           Boolean   @default(false) // Free photo — no purchase required
+    createdAt          DateTime  @default(now())
+
+    collection  Collection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+    faceRecords FaceRecord[]
+
+    @@index([collectionId])
+    @@index([collectionId, bibNumber])
+    @@index([bibNumber])
+}
+
+// Purchase = buyer pays for all photos of a bib in a collection.
+// isPublic = true marks a system-generated record for free/public collections (special token).
+model Purchase {
+    id                      String         @id @default(cuid())
+    collectionId            String
+    bibNumber               String?
+    buyerEmail              String
+    buyerName               String?
+    buyerLastName           String?
+    buyerPhone              String?
+    amountPaid              Decimal        @db.Decimal(10, 2)
+    currency                String         @default("ARS")
+    status                  PurchaseStatus @default(PENDING)
+    mercadopagoPreferenceId String?
+    mercadopagoPaymentId    String?
+    mercadopagoOrderId      String?
+    // 72-hour expiring download token; permanent for isPublic = true records
+    downloadToken           String?        @unique
+    downloadTokenExpires    DateTime?
+    downloadCount           Int            @default(0)
+    firstDownloadAt         DateTime?
+    isPublic                Boolean        @default(false)
+    notes                   String?        @db.Text
+    createdAt               DateTime       @default(now())
+    updatedAt               DateTime       @updatedAt
+
+    collection Collection    @relation(fields: [collectionId], references: [id])
+    downloads  DownloadLog[]
+
+    @@index([collectionId])
+    @@index([collectionId, bibNumber])
+    @@index([buyerEmail])
+    @@index([downloadToken])
+    @@index([status])
+    @@index([mercadopagoPaymentId])
+}
+
+enum PurchaseStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    REFUNDED
+}
+
+// One row per file download event — used for audit and abuse detection
+model DownloadLog {
+    id         String   @id @default(cuid())
+    purchaseId String
+    ip         String?
+    userAgent  String?  @db.Text
+    createdAt  DateTime @default(now())
+
+    purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+    @@index([purchaseId])
+    @@index([createdAt])
+}
+
+// AWS Rekognition face index — one row per face detected in a photo
+model FaceRecord {
+    id           String   @id @default(cuid())
+    rekFaceId    String   @unique // AWS Rekognition FaceId (globally unique)
+    photoId      String
+    collectionId String
+    confidence   Float?            // Rekognition indexing confidence 0–100
+    boundingBox  Json?             // { left, top, width, height } normalized 0–1
+    createdAt    DateTime @default(now())
+
+    photo      Photo      @relation(fields: [photoId], references: [id], onDelete: Cascade)
+    collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+    @@index([collectionId])
+    @@index([photoId])
+}
+
+// ─── Platform Settings ───────────────────────────────────────────────────────
+
+// Key-value store for platform-wide config (e.g. global watermark, contact info)
+model Setting {
+    key       String   @id
+    value     String   @db.Text
+    updatedAt DateTime @updatedAt
 }
