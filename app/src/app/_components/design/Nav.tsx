@@ -59,7 +59,8 @@ export function Nav() {
         </div>
 
         {/* right — links */}
-        <div className="flex items-center gap-8 md:gap-8">
+        <div className="flex items-center gap-8">
+          {/* Desktop-only links */}
           <Link
             href="#eventos"
             {...link}
@@ -92,7 +93,17 @@ export function Nav() {
               ↗
             </span>
           </Link>
-          <MobileNav />
+
+          {/* Mobile: Eventos + hamburger, always white */}
+          <div className="flex items-center gap-5 md:hidden text-[color:var(--color-paper)]">
+            <Link
+              href="#eventos"
+              className="font-mono text-[11px] uppercase tracking-[0.22em]"
+            >
+              Eventos
+            </Link>
+            <MobileNav />
+          </div>
         </div>
       </div>
     </motion.nav>

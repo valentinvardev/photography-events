@@ -22,7 +22,7 @@ export function MobileNav() {
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div>
       {/* Hamburger */}
       <button
         onClick={() => setOpen((v) => !v)}
