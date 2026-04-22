@@ -24,17 +24,20 @@ export function useCursorTrigger(variant: CursorVariant, label = "") {
   };
 }
 
-// Sections declare their background theme via data-cursor="dark"|"light".
-// Walk up from the hovered element — first match wins.
-function getSectionTheme(target: EventTarget | null): "light" | "dark" {
+// Walk up from the hovered element; sections declare data-cursor="dark"|"light".
+function applyTheme(target: EventTarget | null) {
   let el = target as HTMLElement | null;
   while (el) {
     const hint = el.dataset?.cursor;
-    if (hint === "dark") return "dark";
-    if (hint === "light") return "light";
+    if (hint === "dark" || hint === "light") {
+      const fg = hint === "light" ? "#0a0a0a" : "#f5f2ec";
+      const bg = hint === "light" ? "#f5f2ec" : "#0a0a0a";
+      document.documentElement.style.setProperty("--cursor-fg", fg);
+      document.documentElement.style.setProperty("--cursor-bg", bg);
+      return;
+    }
     el = el.parentElement;
   }
-  return "light";
 }
 
 export function Cursor() {
@@ -47,7 +50,6 @@ export function Cursor() {
   const [label, setLabel] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
-  const [bgTheme, setBgTheme] = useState<"light" | "dark">("light");
   const rafRef = useRef<number | null>(null);
   const firstMove = useRef(true);
 
@@ -56,10 +58,13 @@ export function Cursor() {
     if (!mq.matches) return;
     setEnabled(true);
     document.body.classList.add("has-custom-cursor");
+    // Start white — page opens on dark Hero
+    document.documentElement.style.setProperty("--cursor-fg", "#f5f2ec");
+    document.documentElement.style.setProperty("--cursor-bg", "#0a0a0a");
 
     const move = (e: MouseEvent) => {
-      // Theme detection is instant — just a data-attribute walk up the DOM
-      setBgTheme(getSectionTheme(e.target));
+      // Color: direct CSS variable write — no React, no batching, instant
+      applyTheme(e.target);
 
       if (firstMove.current) {
         x.set(e.clientX);
@@ -95,20 +100,19 @@ export function Cursor() {
       document.removeEventListener("mouseenter", onEnter);
       cursorContext.listeners.delete(onCtxChange);
       document.body.classList.remove("has-custom-cursor");
+      document.documentElement.style.removeProperty("--cursor-fg");
+      document.documentElement.style.removeProperty("--cursor-bg");
     };
   }, [x, y]);
 
   if (!enabled || !hasMoved) return null;
-
-  const dotColor = bgTheme === "light" ? "#0a0a0a" : "#f5f2ec";
-  const svgColor = bgTheme === "light" ? "#0a0a0a" : "#f5f2ec";
 
   return (
     <motion.div
       className="cursor-root"
       style={{ x: sx, y: sy, opacity: variant === "hidden" ? 0 : 1 }}
     >
-      {/* default — small dot */}
+      {/* default — dot */}
       <motion.span
         animate={{
           scale: variant === "default" ? 1 : 0,
@@ -122,13 +126,13 @@ export function Cursor() {
           width: 8,
           height: 8,
           borderRadius: "50%",
-          background: dotColor,
+          background: "var(--cursor-fg)",
           display: "block",
-          transition: "background 0.2s ease",
+          transition: "background 0.12s ease",
         }}
       />
 
-      {/* view — viewfinder cross-hair */}
+      {/* view — sniper crosshair */}
       <motion.svg
         width="56"
         height="56"
@@ -139,14 +143,14 @@ export function Cursor() {
           rotate: variant === "view" ? 0 : 45,
         }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        style={{ position: "absolute", left: -28, top: -28, display: "block" }}
+        style={{ position: "absolute", left: -28, top: -28, display: "block", overflow: "visible" }}
       >
-        <circle cx="28" cy="28" r="22" fill="none" stroke={svgColor} strokeWidth="1" />
-        <line x1="28" y1="2" x2="28" y2="14" stroke={svgColor} strokeWidth="1" />
-        <line x1="28" y1="42" x2="28" y2="54" stroke={svgColor} strokeWidth="1" />
-        <line x1="2" y1="28" x2="14" y2="28" stroke={svgColor} strokeWidth="1" />
-        <line x1="42" y1="28" x2="54" y2="28" stroke={svgColor} strokeWidth="1" />
-        <circle cx="28" cy="28" r="1.5" fill={svgColor} />
+        <circle cx="28" cy="28" r="22" fill="none" style={{ stroke: "var(--cursor-fg)", transition: "stroke 0.12s ease" }} strokeWidth="1" />
+        <line x1="28" y1="2" x2="28" y2="14" style={{ stroke: "var(--cursor-fg)", transition: "stroke 0.12s ease" }} strokeWidth="1" />
+        <line x1="28" y1="42" x2="28" y2="54" style={{ stroke: "var(--cursor-fg)", transition: "stroke 0.12s ease" }} strokeWidth="1" />
+        <line x1="2" y1="28" x2="14" y2="28" style={{ stroke: "var(--cursor-fg)", transition: "stroke 0.12s ease" }} strokeWidth="1" />
+        <line x1="42" y1="28" x2="54" y2="28" style={{ stroke: "var(--cursor-fg)", transition: "stroke 0.12s ease" }} strokeWidth="1" />
+        <circle cx="28" cy="28" r="1.5" style={{ fill: "var(--cursor-fg)", transition: "fill 0.12s ease" }} />
       </motion.svg>
 
       {/* cta — labeled pill */}
@@ -161,15 +165,15 @@ export function Cursor() {
           left: 14,
           top: -14,
           padding: "6px 14px",
-          background: dotColor,
-          color: bgTheme === "light" ? "#f5f2ec" : "#0a0a0a",
+          background: "var(--cursor-fg)",
+          color: "var(--cursor-bg)",
           fontFamily: "var(--font-mono)",
           fontSize: 10,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
           whiteSpace: "nowrap",
           borderRadius: 999,
-          transition: "background 0.2s ease, color 0.2s ease",
+          transition: "background 0.12s ease, color 0.12s ease",
         }}
       >
         {label || "↗"}
