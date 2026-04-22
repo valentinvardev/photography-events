@@ -68,12 +68,12 @@ export function MagneticButton({
       style={{ x: sx, y: sy }}
       className={`group relative inline-flex items-center gap-3 font-mono uppercase tracking-[0.2em] transition-colors duration-300 ${sizes[size]} ${variants[variant]} ${className}`}
     >
-      <motion.span style={{ x: sx, y: sy }} className="relative inline-flex items-center gap-3">
+      <span className="relative inline-flex items-center gap-3">
         {children}
         <span aria-hidden className="inline-block transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1">
           ↗
         </span>
-      </motion.span>
+      </span>
     </motion.div>
   );
 
