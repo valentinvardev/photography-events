@@ -1,54 +1,47 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
 import { BibCheckoutModal } from "~/app/_components/FolderModal";
 import { useCart } from "~/app/_components/CartContext";
 import { Lightbox } from "~/app/_components/design/Lightbox";
 
-// ─── Photo tile — editorial contact-sheet card ────────────────────────────────
+// ─── Photo tile ───────────────────────────────────────────────────────────────
+// URL is passed from parent batch query — no per-tile API call.
+// memo'd so it only re-renders when its own props change (e.g. inCart flips).
 
-function PhotoTile({
+const PhotoTile = memo(function PhotoTile({
   photoId,
   bibNumber,
   index,
   price,
   inCart,
   isFuzzy,
+  url,
   onOpenLightbox,
   onToggleCart,
 }: {
   photoId: string;
   bibNumber: string | null;
-  index: number; // kept for display (frame number)
+  index: number;
   price: number;
   inCart: boolean;
   isFuzzy?: boolean;
-  onOpenLightbox: (url: string) => void;
-  onToggleCart: (url: string) => void;
+  url: string | null;
+  onOpenLightbox: (photoId: string, bibNumber: string | null, url: string) => void;
+  onToggleCart: (photoId: string, bibNumber: string | null, url: string, price: number) => void;
 }) {
-  const { data, isLoading } = api.photo.getPreviewUrls.useQuery({ ids: [photoId] });
-  const url = data?.[0]?.url;
-
-  const handleCart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!url) return;
-    onToggleCart(url);
-  };
-
   return (
     <div
       className="group relative cursor-pointer"
-      onClick={() => url && onOpenLightbox(url)}
+      onClick={() => url && onOpenLightbox(photoId, bibNumber, url)}
     >
       {/* Frame number */}
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2 flex items-center justify-between">
         <span>F. {String(index + 1).padStart(3, "0")}</span>
         {bibNumber && <span className="text-[color:var(--color-ink)]">#{bibNumber}</span>}
-        {isFuzzy && (
-          <span className="text-[color:var(--color-safelight)]">SIMILAR</span>
-        )}
+        {isFuzzy && <span className="text-[color:var(--color-safelight)]">SIMILAR</span>}
       </p>
 
       {/* Photo */}
@@ -62,7 +55,7 @@ function PhotoTile({
         <span className="pointer-events-none absolute bottom-0 left-0 w-3 h-3 border-l border-b border-[color:var(--color-paper)] z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
         <span className="pointer-events-none absolute bottom-0 right-0 w-3 h-3 border-r border-b border-[color:var(--color-paper)] z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {isLoading || !url ? (
+        {!url ? (
           <div className="w-full h-full animate-pulse bg-[color:var(--color-grey-300)]" />
         ) : (
           <img
@@ -80,9 +73,13 @@ function PhotoTile({
           </span>
         </div>
 
-        {/* Cart button — always visible */}
+        {/* Cart button */}
         <button
-          onClick={(e) => { e.stopPropagation(); handleCart(e); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!url) return;
+            onToggleCart(photoId, bibNumber, url, price);
+          }}
           disabled={!url}
           className={`absolute bottom-2 right-2 z-20 flex items-center gap-2 px-3 py-2 transition-all duration-200 disabled:opacity-40 ${
             inCart
@@ -101,11 +98,11 @@ function PhotoTile({
       </div>
     </div>
   );
-}
+});
 
 // ─── Floating cart bar ────────────────────────────────────────────────────────
 
-function CartBar({
+const CartBar = memo(function CartBar({
   count,
   total,
   onCheckout,
@@ -160,11 +157,11 @@ function CartBar({
       )}
     </AnimatePresence>
   );
-}
+});
 
 // ─── Section label ────────────────────────────────────────────────────────────
 
-function SectionLabel({ label }: { index?: string; label: string }) {
+const SectionLabel = memo(function SectionLabel({ label }: { index?: string; label: string }) {
   return (
     <div className="flex items-end justify-between mb-6 mt-2 gap-6">
       <div>
@@ -178,7 +175,7 @@ function SectionLabel({ label }: { index?: string; label: string }) {
       <div className="hidden md:block flex-1 h-px bg-[color:var(--color-grey-300)] mb-3" />
     </div>
   );
-}
+});
 
 // ─── Main FolderBrowser ───────────────────────────────────────────────────────
 
@@ -206,8 +203,11 @@ export function FolderBrowser({
   } | null>(null);
 
   const { items: cartItems, inCart: isInCart, toggle: toggleCart, clear: clearCart } = useCart();
-
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Stable ref for cartItems so the checkout listener never needs to re-subscribe
+  const cartItemsRef = useRef(cartItems);
+  useEffect(() => { cartItemsRef.current = cartItems; }, [cartItems]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 280);
@@ -224,24 +224,116 @@ export function FolderBrowser({
     { enabled: hasSearch },
   );
 
-  const exactPhotos =
-    searchData?.exact.flatMap((g) => g.photos.map((p) => ({ ...p, isFuzzy: false }))) ?? [];
-  const fuzzyPhotos =
-    searchData?.fuzzy.flatMap((g) => g.photos.map((p) => ({ ...p, isFuzzy: true }))) ?? [];
-  const allSearchPhotos = [...exactPhotos, ...fuzzyPhotos];
+  // Memoize derived search arrays to avoid recreating them every render
+  const exactPhotos = useMemo(
+    () => searchData?.exact.flatMap((g) => g.photos.map((p) => ({ ...p, isFuzzy: false as const }))) ?? [],
+    [searchData],
+  );
+  const fuzzyPhotos = useMemo(
+    () => searchData?.fuzzy.flatMap((g) => g.photos.map((p) => ({ ...p, isFuzzy: true as const }))) ?? [],
+    [searchData],
+  );
+  const allSearchPhotos = useMemo(() => [...exactPhotos, ...fuzzyPhotos], [exactPhotos, fuzzyPhotos]);
   const noResults = hasSearch && !searchLoading && allSearchPhotos.length === 0;
 
-  // Listen for global checkout trigger from NavCartButton
+  const showingFace = faceActive && faceStatus === "done" && faceBibs !== null;
+
+  // Memoize price map — recomputes only when allPhotos or pricePerBib changes
+  const priceMap = useMemo(
+    () =>
+      new Map<string, number>(
+        (allPhotos ?? []).map((p) => [
+          p.id,
+          p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib,
+        ]),
+      ),
+    [allPhotos, pricePerBib],
+  );
+
+  // Memoize visible photos list — drives both the grid and the batch URL query
+  const visiblePhotos = useMemo(() => {
+    if (hasSearch) {
+      return allSearchPhotos.map((p) => ({
+        id: p.id,
+        bibNumber: p.bibNumber,
+        price: p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib,
+        isFuzzy: p.isFuzzy,
+      }));
+    }
+    if (showingFace) {
+      return (faceBibs ?? []).flatMap((g) =>
+        g.photoIds.map((id) => ({
+          id,
+          bibNumber: g.bib,
+          price: priceMap.get(id) ?? pricePerBib,
+          isFuzzy: false as const,
+        })),
+      );
+    }
+    return (allPhotos ?? []).map((p) => ({
+      id: p.id,
+      bibNumber: p.bibNumber,
+      price: priceMap.get(p.id) ?? pricePerBib,
+      isFuzzy: false as const,
+    }));
+  }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib]);
+
+  // Single batch URL query — converts N per-tile queries into 1 request
+  const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
+  const { data: urlData } = api.photo.getPreviewUrls.useQuery(
+    { ids: visibleIds },
+    { enabled: visibleIds.length > 0, staleTime: 50 * 60 * 1000 }, // signed URLs live for 1hr
+  );
+  const urlMap = useMemo(
+    () => new Map(urlData?.map((u) => [u.id, u.url]) ?? []),
+    [urlData],
+  );
+
+  // Stable refs for lightbox handler (avoids stale closure without dep churn)
+  const allPhotosRef = useRef(allPhotos);
+  useEffect(() => { allPhotosRef.current = allPhotos; }, [allPhotos]);
+  const visiblePhotosRef = useRef(visiblePhotos);
+  useEffect(() => { visiblePhotosRef.current = visiblePhotos; }, [visiblePhotos]);
+
+  // Stable handlers — same reference across renders, so memo'd tiles don't re-render
+  const handleOpenLightbox = useCallback((photoId: string, bibNumber: string | null, url: string) => {
+    const ap = allPhotosRef.current;
+    const vp = visiblePhotosRef.current;
+    const sameBibIds =
+      bibNumber && ap
+        ? ap.filter((ph) => ph.bibNumber === bibNumber).map((ph) => ph.id)
+        : [photoId];
+    const idx = vp.findIndex((v) => v.id === photoId);
+    setLightbox({
+      url,
+      bibNumber,
+      photoIds: sameBibIds,
+      photoUrls: [url],
+      currentIndex: idx >= 0 ? idx : 0,
+    });
+  }, []);
+
+  const handleToggleCart = useCallback(
+    (photoId: string, bibNumber: string | null, url: string, price: number) => {
+      toggleCart({ photoId, bibNumber, url, price });
+    },
+    [toggleCart],
+  );
+
+  const cartCheckout = useCallback(() => {
+    const items = cartItemsRef.current;
+    if (items.length === 0) return;
+    const allBibs = [...new Set(items.map((i) => i.bibNumber).filter(Boolean))];
+    const bib = allBibs.length === 1 ? (allBibs[0] ?? "") : "";
+    setModal({ bib, photoIds: items.map((i) => i.photoId) });
+  }, []);
+
+  // Checkout event listener — stable, never re-subscribes on cart changes
   useEffect(() => {
-    const handler = () => {
-      if (cartItems.length === 0) return;
-      const allBibs = [...new Set(cartItems.map((i) => i.bibNumber).filter(Boolean))];
-      const bib = allBibs.length === 1 ? (allBibs[0] ?? "") : "";
-      setModal({ bib, photoIds: cartItems.map((i) => i.photoId) });
-    };
+    const handler = () => cartCheckout();
     window.addEventListener("ivana:open-checkout", handler);
     return () => window.removeEventListener("ivana:open-checkout", handler);
-  }, [cartItems]);
+  }, [cartCheckout]);
 
   const handleFaceUpload = async (file: File) => {
     setFaceStatus("uploading");
@@ -259,23 +351,14 @@ export function FolderBrowser({
             canvas.width = Math.round(img.width * scale);
             canvas.height = Math.round(img.height * scale);
             const ctx = canvas.getContext("2d");
-            if (!ctx) {
-              rej(new Error("canvas-ctx"));
-              return;
-            }
+            if (!ctx) { rej(new Error("canvas-ctx")); return; }
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
             const b64 = dataUrl.split(",")[1];
-            if (!b64) {
-              rej(new Error("canvas-encode"));
-              return;
-            }
+            if (!b64) { rej(new Error("canvas-encode")); return; }
             res(b64);
           };
-          img.onerror = (e) => {
-            URL.revokeObjectURL(objectUrl);
-            rej(e);
-          };
+          img.onerror = (e) => { URL.revokeObjectURL(objectUrl); rej(e); };
           img.src = objectUrl;
         });
       } catch (canvasErr) {
@@ -314,53 +397,10 @@ export function FolderBrowser({
     }
   };
 
-  const showingFace = faceActive && faceStatus === "done" && faceBibs !== null;
-
-  const cartCheckout = () => {
-    if (cartItems.length === 0) return;
-    const allBibs = [...new Set(cartItems.map((i) => i.bibNumber).filter(Boolean))];
-    const bib = allBibs.length === 1 ? (allBibs[0] ?? "") : "";
-    setModal({ bib, photoIds: cartItems.map((i) => i.photoId) });
-  };
-
-  // Map photoId -> effective price (photo.price ?? pricePerBib)
-  const priceMap = new Map<string, number>(
-    (allPhotos ?? []).map((p) => [p.id, p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib]),
-  );
-  const effectivePrice = (photoId: string) => priceMap.get(photoId) ?? pricePerBib;
-
-  // Build a set of urls for current gallery view (for lightbox prev/next)
-  const visiblePhotos = hasSearch
-    ? allSearchPhotos.map((p) => ({ id: p.id, bibNumber: p.bibNumber, price: p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib }))
-    : showingFace
-      ? (faceBibs ?? []).flatMap((g) =>
-          g.photoIds.map((id) => ({ id, bibNumber: g.bib, price: effectivePrice(id) })),
-        )
-      : (allPhotos ?? []).map((p) => ({ id: p.id, bibNumber: p.bibNumber, price: priceMap.get(p.id) ?? pricePerBib }));
-
-  const makeTileHandlers = (p: { id: string; bibNumber: string | null; price: number }) => ({
-    onOpenLightbox: (url: string) => {
-      const sameBibIds =
-        p.bibNumber && allPhotos
-          ? allPhotos.filter((ph) => ph.bibNumber === p.bibNumber).map((ph) => ph.id)
-          : [p.id];
-      const idx = visiblePhotos.findIndex((vp) => vp.id === p.id);
-      setLightbox({
-        url,
-        bibNumber: p.bibNumber,
-        photoIds: sameBibIds,
-        photoUrls: [url],
-        currentIndex: idx >= 0 ? idx : 0,
-      });
-    },
-    onToggleCart: (url: string) =>
-      toggleCart({ photoId: p.id, bibNumber: p.bibNumber, url, price: p.price }),
-  });
-
   const GRID = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10";
 
   return (
-    <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-16 pb-32">
+    <section id="search" className="max-w-[1600px] mx-auto px-6 md:px-10 py-16 pb-32">
       {/* ── Search panel ───────────────────────────────────── */}
       <div className="mx-auto mb-20 max-w-3xl">
         <p className="eyebrow mb-5">Buscá tus fotos</p>
@@ -406,11 +446,7 @@ export function FolderBrowser({
             <button
               onClick={() => {
                 if (faceStatus === "uploading") return;
-                if (
-                  faceStatus === "done" ||
-                  faceStatus === "error" ||
-                  faceStatus === "no-face"
-                ) {
+                if (faceStatus === "done" || faceStatus === "error" || faceStatus === "no-face") {
                   setFaceStatus("idle");
                   setFaceBibs(null);
                   if (fileRef.current) fileRef.current.value = "";
@@ -457,10 +493,7 @@ export function FolderBrowser({
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-safelight)]">
               No detectamos rostro ·{" "}
               <button
-                onClick={() => {
-                  setFaceStatus("idle");
-                  if (fileRef.current) fileRef.current.value = "";
-                }}
+                onClick={() => { setFaceStatus("idle"); if (fileRef.current) fileRef.current.value = ""; }}
                 className="underline underline-offset-4"
               >
                 intentar otra
@@ -471,10 +504,7 @@ export function FolderBrowser({
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-safelight)]">
               Error al procesar ·{" "}
               <button
-                onClick={() => {
-                  setFaceStatus("idle");
-                  if (fileRef.current) fileRef.current.value = "";
-                }}
+                onClick={() => { setFaceStatus("idle"); if (fileRef.current) fileRef.current.value = ""; }}
                 className="underline underline-offset-4"
               >
                 reintentar
@@ -487,23 +517,22 @@ export function FolderBrowser({
       {/* ── Face results ───────────────────────────────────── */}
       {showingFace && faceBibs && faceBibs.length > 0 && (
         <div className="mb-20">
-          <SectionLabel index="03a" label="Reconocimiento facial." />
+          <SectionLabel label="Reconocimiento facial." />
           <div className={GRID}>
             {faceBibs.flatMap((g, gi) =>
-              g.photoIds.map((id, pi) => {
-                const p = { id, bibNumber: g.bib, price: effectivePrice(id) };
-                return (
-                  <PhotoTile
-                    key={id}
-                    photoId={id}
-                    bibNumber={g.bib}
-                    index={gi * 100 + pi}
-                    price={p.price}
-                    inCart={isInCart(id)}
-                    {...makeTileHandlers(p)}
-                  />
-                );
-              }),
+              g.photoIds.map((id, pi) => (
+                <PhotoTile
+                  key={id}
+                  photoId={id}
+                  bibNumber={g.bib}
+                  index={gi * 100 + pi}
+                  price={priceMap.get(id) ?? pricePerBib}
+                  inCart={isInCart(id)}
+                  url={urlMap.get(id) ?? null}
+                  onOpenLightbox={handleOpenLightbox}
+                  onToggleCart={handleToggleCart}
+                />
+              )),
             )}
           </div>
         </div>
@@ -536,31 +565,27 @@ export function FolderBrowser({
           )}
           {!searchLoading && allSearchPhotos.length > 0 && (
             <>
-              <SectionLabel
-                index="03"
-                label={`Dorsal #${debouncedSearch}.`}
-              />
+              <SectionLabel label={`Dorsal #${debouncedSearch}.`} />
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-8">
                 {exactPhotos.length} {exactPhotos.length === 1 ? "foto" : "fotos"}
                 {fuzzyPhotos.length > 0 &&
                   ` · ${fuzzyPhotos.length} similar${fuzzyPhotos.length !== 1 ? "es" : ""}`}
               </p>
               <div className={GRID}>
-                {allSearchPhotos.map((p, i) => {
-                  const ep = p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib;
-                  return (
-                    <PhotoTile
-                      key={p.id}
-                      photoId={p.id}
-                      bibNumber={p.bibNumber}
-                      index={i}
-                      price={ep}
-                      inCart={isInCart(p.id)}
-                      isFuzzy={p.isFuzzy}
-                      {...makeTileHandlers({ ...p, price: ep })}
-                    />
-                  );
-                })}
+                {allSearchPhotos.map((p, i) => (
+                  <PhotoTile
+                    key={p.id}
+                    photoId={p.id}
+                    bibNumber={p.bibNumber}
+                    index={i}
+                    price={p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib}
+                    inCart={isInCart(p.id)}
+                    isFuzzy={p.isFuzzy}
+                    url={urlMap.get(p.id) ?? null}
+                    onOpenLightbox={handleOpenLightbox}
+                    onToggleCart={handleToggleCart}
+                  />
+                ))}
               </div>
             </>
           )}
@@ -582,25 +607,24 @@ export function FolderBrowser({
             </div>
           ) : allPhotos && allPhotos.length > 0 ? (
             <>
-              <SectionLabel index="03" label="Fotos del evento." />
+              <SectionLabel label="Fotos del evento." />
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-8">
                 {String(allPhotos.length).padStart(3, "0")} fotografías · clic para previsualizar
               </p>
               <div className={GRID}>
-                {allPhotos.map((p, i) => {
-                  const ep = priceMap.get(p.id) ?? pricePerBib;
-                  return (
-                    <PhotoTile
-                      key={p.id}
-                      photoId={p.id}
-                      bibNumber={p.bibNumber}
-                      index={i}
-                      price={ep}
-                      inCart={isInCart(p.id)}
-                      {...makeTileHandlers({ ...p, price: ep })}
-                    />
-                  );
-                })}
+                {allPhotos.map((p, i) => (
+                  <PhotoTile
+                    key={p.id}
+                    photoId={p.id}
+                    bibNumber={p.bibNumber}
+                    index={i}
+                    price={priceMap.get(p.id) ?? pricePerBib}
+                    inCart={isInCart(p.id)}
+                    url={urlMap.get(p.id) ?? null}
+                    onOpenLightbox={handleOpenLightbox}
+                    onToggleCart={handleToggleCart}
+                  />
+                ))}
               </div>
             </>
           ) : (
@@ -633,20 +657,13 @@ export function FolderBrowser({
               </div>
               <button
                 onClick={() => {
-                  setModal({
-                    bib: lightbox.bibNumber ?? "",
-                    photoIds: lightbox.photoIds,
-                  });
+                  setModal({ bib: lightbox.bibNumber ?? "", photoIds: lightbox.photoIds });
                   setLightbox(null);
                 }}
                 className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-5 py-3 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
               >
-                <span className="font-mono text-[10px] uppercase tracking-[0.22em]">
-                  Comprar foto
-                </span>
-                <span className="font-mono text-[10px] tracking-[0.22em] transition-transform group-hover:translate-x-1">
-                  →
-                </span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em]">Comprar foto</span>
+                <span className="font-mono text-[10px] tracking-[0.22em] transition-transform group-hover:translate-x-1">→</span>
               </button>
             </div>
           )

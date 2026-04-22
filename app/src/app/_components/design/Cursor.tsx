@@ -81,7 +81,7 @@ export function Cursor() {
         y.set(e.clientY);
       });
     };
-    window.addEventListener("mousemove", move);
+    window.addEventListener("mousemove", move, { passive: true });
 
     const onCtxChange = () => {
       setVariant(cursorContext.variant);
