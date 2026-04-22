@@ -24,6 +24,25 @@ export function useCursorTrigger(variant: CursorVariant, label = "") {
   };
 }
 
+function getBgLuminance(cx: number, cy: number): "light" | "dark" {
+  let el = document.elementFromPoint(cx, cy) as HTMLElement | null;
+  for (let i = 0; el && i < 10; i++) {
+    const bg = window.getComputedStyle(el).backgroundColor;
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+      const m = bg.match(/[\d.]+/g);
+      if (m && m.length >= 3) {
+        const a = m[3] !== undefined ? +m[3]! : 1;
+        if (a > 0.05) {
+          const lum = (0.299 * +m[0]! + 0.587 * +m[1]! + 0.114 * +m[2]!) / 255;
+          return lum > 0.5 ? "light" : "dark";
+        }
+      }
+    }
+    el = el.parentElement;
+  }
+  return "light";
+}
+
 export function Cursor() {
   const x = useMotionValue(-1000);
   const y = useMotionValue(-1000);
@@ -34,11 +53,11 @@ export function Cursor() {
   const [label, setLabel] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
+  const [bgTheme, setBgTheme] = useState<"light" | "dark">("light");
   const rafRef = useRef<number | null>(null);
   const firstMove = useRef(true);
 
   useEffect(() => {
-    // only on devices that have a real pointer
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
     if (!mq.matches) return;
     setEnabled(true);
@@ -46,19 +65,20 @@ export function Cursor() {
 
     const move = (e: MouseEvent) => {
       if (firstMove.current) {
-        // Teleport to actual position on first move so spring doesn't sweep from -1000
         x.set(e.clientX);
         y.set(e.clientY);
         sx.set(e.clientX);
         sy.set(e.clientY);
         firstMove.current = false;
         setHasMoved(true);
+        setBgTheme(getBgLuminance(e.clientX, e.clientY));
         return;
       }
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         x.set(e.clientX);
         y.set(e.clientY);
+        setBgTheme(getBgLuminance(e.clientX, e.clientY));
       });
     };
     window.addEventListener("mousemove", move);
@@ -85,6 +105,9 @@ export function Cursor() {
 
   if (!enabled || !hasMoved) return null;
 
+  const dotColor = bgTheme === "light" ? "#0a0a0a" : "#f5f2ec";
+  const svgColor = bgTheme === "light" ? "#0a0a0a" : "#f5f2ec";
+
   return (
     <motion.div
       className="cursor-root"
@@ -99,14 +122,14 @@ export function Cursor() {
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         style={{
           position: "absolute",
-          left: -3,
-          top: -3,
-          width: 6,
-          height: 6,
+          left: -4,
+          top: -4,
+          width: 8,
+          height: 8,
           borderRadius: "50%",
-          background: "#ffffff",
+          background: dotColor,
           display: "block",
-          mixBlendMode: "difference",
+          transition: "background 0.2s ease",
         }}
       />
 
@@ -121,14 +144,14 @@ export function Cursor() {
           rotate: variant === "view" ? 0 : 45,
         }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        style={{ position: "absolute", left: -28, top: -28, display: "block", mixBlendMode: "difference" }}
+        style={{ position: "absolute", left: -28, top: -28, display: "block" }}
       >
-        <circle cx="28" cy="28" r="22" fill="none" stroke="#f5f2ec" strokeWidth="1" />
-        <line x1="28" y1="2" x2="28" y2="14" stroke="#f5f2ec" strokeWidth="1" />
-        <line x1="28" y1="42" x2="28" y2="54" stroke="#f5f2ec" strokeWidth="1" />
-        <line x1="2" y1="28" x2="14" y2="28" stroke="#f5f2ec" strokeWidth="1" />
-        <line x1="42" y1="28" x2="54" y2="28" stroke="#f5f2ec" strokeWidth="1" />
-        <circle cx="28" cy="28" r="1.5" fill="#f5f2ec" />
+        <circle cx="28" cy="28" r="22" fill="none" stroke={svgColor} strokeWidth="1" />
+        <line x1="28" y1="2" x2="28" y2="14" stroke={svgColor} strokeWidth="1" />
+        <line x1="28" y1="42" x2="28" y2="54" stroke={svgColor} strokeWidth="1" />
+        <line x1="2" y1="28" x2="14" y2="28" stroke={svgColor} strokeWidth="1" />
+        <line x1="42" y1="28" x2="54" y2="28" stroke={svgColor} strokeWidth="1" />
+        <circle cx="28" cy="28" r="1.5" fill={svgColor} />
       </motion.svg>
 
       {/* cta — labeled pill */}
@@ -143,15 +166,15 @@ export function Cursor() {
           left: 14,
           top: -14,
           padding: "6px 14px",
-          background: "#f5f2ec",
-          color: "#0a0a0a",
+          background: dotColor,
+          color: bgTheme === "light" ? "#f5f2ec" : "#0a0a0a",
           fontFamily: "var(--font-mono)",
           fontSize: 10,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
           whiteSpace: "nowrap",
-          mixBlendMode: "normal",
           borderRadius: 999,
+          transition: "background 0.2s ease, color 0.2s ease",
         }}
       >
         {label || "↗"}
