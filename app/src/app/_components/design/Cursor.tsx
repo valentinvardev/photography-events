@@ -104,7 +104,7 @@ export function Cursor() {
           width: 6,
           height: 6,
           borderRadius: "50%",
-          background: "#f5f2ec",
+          background: "#ffffff",
           display: "block",
           mixBlendMode: "difference",
         }}
