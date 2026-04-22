@@ -1,33 +1,48 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useMotionTemplate, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import { useRef } from "react";
+import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { useCursorTrigger } from "./Cursor";
 
 export function Hero({ collectionsCount }: { collectionsCount: number }) {
   const ref = useRef<HTMLElement>(null);
+  const prefersReduced = useReducedMotion();
+
+  // Detect touch/mobile — disables parallax and heavy scroll animations
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none), (max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const reduced = prefersReduced ?? isMobile;
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 240]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-  const overlayOpacity = useTransform(scrollYProgress, [0, 1], [0.35, 0.7]);
-  const wordmarkY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  const y = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : 240]);
+  const scale = useTransform(scrollYProgress, [0, 1], [1, reduced ? 1 : 1.15]);
+  const overlayOpacity = useTransform(scrollYProgress, [0, 1], [0.35, reduced ? 0.35 : 0.7]);
+  const wordmarkY = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : -120]);
 
-  // Mouse parallax for background image
+  // Mouse parallax — only active on desktop (no-op on touch)
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const smX = useSpring(mouseX, { stiffness: 60, damping: 20, mass: 1 });
   const smY = useSpring(mouseY, { stiffness: 60, damping: 20, mass: 1 });
 
-  // Spotlight illumination following cursor
+  // Spotlight — only active on desktop
   const spotX = useMotionValue(-9999);
   const spotY = useMotionValue(-9999);
   const spotBg = useMotionTemplate`radial-gradient(700px circle at ${spotX}px ${spotY}px, rgba(255,255,255,0.08), transparent 65%)`;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (isMobile) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = (e.clientX - rect.left) / rect.width - 0.5;
     const cy = (e.clientY - rect.top) / rect.height - 0.5;
@@ -37,6 +52,7 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
     spotY.set(e.clientY - rect.top);
   };
   const handleMouseLeave = () => {
+    if (isMobile) return;
     mouseX.set(0);
     mouseY.set(0);
     spotX.set(-9999);
@@ -61,9 +77,9 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
         className="absolute inset-0"
       >
         <motion.div
-          initial={{ clipPath: "inset(8% 8% 8% 8%)" }}
+          initial={{ clipPath: reduced ? "inset(0% 0% 0% 0%)" : "inset(8% 8% 8% 8%)" }}
           animate={{ clipPath: "inset(0% 0% 0% 0%)" }}
-          transition={{ duration: 2.4, ease, delay: 0.1 }}
+          transition={{ duration: reduced ? 0 : 2.4, ease, delay: 0.1 }}
           className="absolute inset-[-3%] overflow-hidden"
         >
           <motion.div style={{ x: smX, y: smY }} className="absolute inset-0">
@@ -142,8 +158,8 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
           className="mt-10 flex flex-col items-center gap-2"
         >
           <motion.span
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            animate={reduced ? {} : { y: [0, 6, 0] }}
+            transition={{ duration: 1.8, repeat: reduced ? 0 : Infinity, ease: "easeInOut" }}
             className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 flex flex-col items-center gap-2"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
