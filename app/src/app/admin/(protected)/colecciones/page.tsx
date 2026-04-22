@@ -8,80 +8,83 @@ export default async function CollectionsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-end justify-between mb-10">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Eventos</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{collections.length} evento{collections.length !== 1 ? "s" : ""} en total</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+            {collections.length} evento{collections.length !== 1 ? "s" : ""}
+          </p>
+          <h1 className="font-display italic font-light leading-[0.92] tracking-[-0.03em]"
+              style={{ fontSize: "clamp(36px, 5vw, 72px)" }}>
+            Eventos.
+          </h1>
         </div>
         <Link
           href="/admin/colecciones/nueva"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 shadow-sm"
-          style={{ background: "linear-gradient(135deg, #1a3a6b, #2563eb)" }}
+          className="group inline-flex items-center gap-3 px-5 py-3 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] hover:bg-[color:var(--color-grey-900)] transition-colors"
         >
-          <span className="text-lg leading-none">+</span>
-          Crear evento
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em]">Nuevo evento</span>
+          <span className="font-mono text-[11px] transition-transform group-hover:translate-x-0.5">+</span>
         </Link>
       </div>
 
       {/* Empty */}
       {collections.length === 0 && (
-        <div className="rounded-2xl border border-gray-100 py-20 text-center bg-white shadow-sm">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-blue-50">
-            <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <p className="text-gray-900 font-medium mb-2">No hay eventos aún</p>
-          <p className="text-gray-500 text-sm mb-6">Creá tu primer evento para empezar a vender fotos</p>
+        <div className="border border-dashed border-[color:var(--color-grey-300)] py-24 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+            Estado
+          </p>
+          <p className="font-display italic text-[44px] leading-tight text-[color:var(--color-ink)]">
+            Sin eventos.
+          </p>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-8">
+            Creá tu primer evento para empezar a vender fotos
+          </p>
           <Link
             href="/admin/colecciones/nueva"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white shadow-sm"
-            style={{ background: "linear-gradient(135deg, #1a3a6b, #2563eb)" }}
+            className="inline-flex items-center gap-3 px-6 py-3 border border-[color:var(--color-ink)] font-mono text-[11px] uppercase tracking-[0.18em] hover:bg-[color:var(--color-ink)] hover:text-[color:var(--color-paper)] transition-colors"
           >
-            Crear primer evento
+            Crear primer evento →
           </Link>
         </div>
       )}
 
       {/* List */}
       {collections.length > 0 && (
-        <div className="flex flex-col gap-2.5">
+        <div className="border border-[color:var(--color-grey-300)] divide-y divide-[color:var(--color-grey-300)]">
           {collections.map((col) => (
             <div
               key={col.id}
-              className="group rounded-2xl border border-gray-100 bg-white shadow-sm px-5 py-4 flex items-center justify-between transition-all hover:shadow-md hover:border-blue-100"
+              className="flex items-center justify-between px-5 py-4 hover:bg-[color:var(--color-grey-100)] transition-colors"
             >
               <div className="flex items-center gap-4 min-w-0">
-                {/* Cover thumbnail or placeholder */}
-                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-blue-50">
+                {/* Cover thumbnail */}
+                <div className="w-10 h-10 shrink-0 overflow-hidden bg-[color:var(--color-grey-300)]">
                   {col.coverUrl ? (
                     <img src={col.coverUrl} alt={col.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                      <span className="font-mono text-[8px] text-[color:var(--color-grey-500)]">sin</span>
                     </div>
                   )}
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-semibold text-gray-900">{col.title}</h2>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h2 className="font-display italic text-[18px] leading-none text-[color:var(--color-ink)]">
+                      {col.title}
+                    </h2>
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      className="font-mono text-[9px] uppercase tracking-[0.18em] px-1.5 py-0.5"
                       style={col.isPublished
                         ? { background: "#dcfce7", color: "#16a34a" }
-                        : { background: "#f1f5f9", color: "#64748b" }
+                        : { background: "var(--color-grey-100)", color: "var(--color-grey-500)" }
                       }
                     >
                       {col.isPublished ? "Publicado" : "Borrador"}
                     </span>
                   </div>
-                  <p className="text-gray-400 text-xs mt-0.5 truncate">
-                    /colecciones/{col.slug} · <span className="text-gray-500">{col._count.photos} foto{col._count.photos !== 1 ? "s" : ""}</span>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-500)] mt-1 truncate">
+                    /colecciones/{col.slug} · {col._count.photos} foto{col._count.photos !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -90,15 +93,14 @@ export default async function CollectionsPage() {
                 <Link
                   href={`/colecciones/${col.slug}`}
                   target="_blank"
-                  className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-700 transition-colors hover:bg-gray-50"
+                  className="px-3 py-2 font-mono text-[10px] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors"
                   title="Ver en sitio público"
                 >
                   ↗
                 </Link>
                 <Link
                   href={`/admin/colecciones/${col.id}`}
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90"
-                  style={{ background: "#1a3a6b" }}
+                  className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] border border-[color:var(--color-ink)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-ink)] hover:text-[color:var(--color-paper)] transition-colors"
                 >
                   Gestionar
                 </Link>

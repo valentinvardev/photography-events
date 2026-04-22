@@ -3,7 +3,6 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
 import { Field } from "~/app/_components/design/Field";
 
 export default function LoginPage() {
@@ -63,43 +62,25 @@ export default function LoginPage() {
 
       {/* Body */}
       <div className="relative max-w-[1600px] mx-auto px-6 md:px-10 pt-16 md:pt-28 pb-20 grid grid-cols-12 gap-6">
-        {/* Eyebrow */}
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="col-span-12 md:col-span-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/45"
-        >
+        <p className="col-span-12 md:col-span-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/45">
           (00) — Acceso restringido
-        </motion.p>
+        </p>
 
-        {/* Headline + form */}
         <div className="col-span-12 md:col-span-8 md:col-start-4">
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+          <h1
             className="font-display italic font-light leading-[0.9] tracking-[-0.04em]"
             style={{ fontSize: "clamp(56px, 10vw, 160px)" }}
           >
             Cuarto<br />
             <span className="text-[color:var(--color-grey-500)]">oscuro.</span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
-            className="mt-10 max-w-md font-sans text-[15px] leading-[1.65] text-[color:var(--color-paper)]/70"
-          >
+          <p className="mt-10 max-w-md font-sans text-[15px] leading-[1.65] text-[color:var(--color-paper)]/70">
             Panel de administración. Solo personal autorizado puede ingresar y modificar colecciones.
-          </motion.p>
+          </p>
 
-          <motion.form
+          <form
             onSubmit={handleSubmit}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.28 }}
             className="mt-16 max-w-xl flex flex-col gap-9"
           >
             <Field
@@ -125,18 +106,14 @@ export default function LoginPage() {
             />
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="border-l-2 border-[color:var(--color-safelight)] pl-4 py-2"
-              >
+              <div className="border-l-2 border-[color:var(--color-safelight)] pl-4 py-2">
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-safelight)]">
                   Error · auth
                 </p>
                 <p className="mt-1 font-display italic text-[18px] text-[color:var(--color-paper)]">
                   {error}
                 </p>
-              </motion.div>
+              </div>
             )}
 
             <div className="flex items-center justify-between mt-4 gap-6 flex-wrap">
@@ -156,7 +133,7 @@ export default function LoginPage() {
                 </span>
               </button>
             </div>
-          </motion.form>
+          </form>
         </div>
       </div>
 

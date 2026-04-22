@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, useMotionValue, useSpring } from "motion/react";
 
 type CursorVariant = "default" | "view" | "cta" | "hidden";
@@ -24,7 +25,6 @@ export function useCursorTrigger(variant: CursorVariant, label = "") {
   };
 }
 
-// Walk up from the hovered element; sections declare data-cursor="dark"|"light".
 function applyTheme(target: EventTarget | null) {
   let el = target as HTMLElement | null;
   while (el) {
@@ -40,7 +40,14 @@ function applyTheme(target: EventTarget | null) {
   }
 }
 
+// Outer shell — only mounts CursorCore on non-admin routes.
 export function Cursor() {
+  const pathname = usePathname();
+  if (pathname.startsWith("/admin")) return null;
+  return <CursorCore />;
+}
+
+function CursorCore() {
   const x = useMotionValue(-1000);
   const y = useMotionValue(-1000);
   const sx = useSpring(x, { stiffness: 380, damping: 32, mass: 0.4 });
@@ -58,14 +65,11 @@ export function Cursor() {
     if (!mq.matches) return;
     setEnabled(true);
     document.body.classList.add("has-custom-cursor");
-    // Start white — page opens on dark Hero
     document.documentElement.style.setProperty("--cursor-fg", "#f5f2ec");
     document.documentElement.style.setProperty("--cursor-bg", "#0a0a0a");
 
     const move = (e: MouseEvent) => {
-      // Color: direct CSS variable write — no React, no batching, instant
       applyTheme(e.target);
-
       if (firstMove.current) {
         x.set(e.clientX);
         y.set(e.clientY);
@@ -112,7 +116,7 @@ export function Cursor() {
       className="cursor-root"
       style={{ x: sx, y: sy, opacity: variant === "hidden" ? 0 : 1 }}
     >
-      {/* default — dot: visible only in default, hides on view/cta */}
+      {/* dot — visible only in default */}
       <motion.span
         animate={{
           scale: variant === "default" ? 1 : 0,
@@ -132,7 +136,7 @@ export function Cursor() {
         }}
       />
 
-      {/* view — sniper crosshair: subtle in default, full in view */}
+      {/* sniper crosshair — subtle in default, full in view */}
       <motion.svg
         width="56"
         height="56"
