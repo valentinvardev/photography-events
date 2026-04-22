@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import { useCursorTrigger } from "./Cursor";
 import { MobileNav } from "~/app/_components/MobileNav";
 
@@ -33,10 +32,7 @@ export function Nav() {
   const link = useCursorTrigger("cta", "ir");
 
   return (
-    <motion.nav
-      initial={{ y: -40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-[background,backdrop-filter,border-color,color] duration-500 ${
         scrolled
           ? "bg-[color:var(--color-paper)]/85 backdrop-blur-md border-b border-[color:var(--color-grey-300)]"
@@ -94,18 +90,12 @@ export function Nav() {
             </span>
           </Link>
 
-          {/* Mobile: Eventos + hamburger, always white */}
-          <div className="flex items-center gap-5 md:hidden text-[color:var(--color-paper)]">
-            <Link
-              href="#eventos"
-              className="font-mono text-[11px] uppercase tracking-[0.22em]"
-            >
-              Buscá tu foto
-            </Link>
+          {/* Mobile: hamburger only */}
+          <div className={`flex items-center md:hidden transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}>
             <MobileNav />
           </div>
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 }

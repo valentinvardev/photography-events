@@ -9,6 +9,7 @@ export function Footer() {
   return (
     <footer
       id="contacto"
+      data-cursor="dark"
       className="relative bg-[color:var(--color-ink)] text-[color:var(--color-paper)] pt-28 pb-10 px-6 md:px-10 overflow-hidden"
     >
       {/* huge wordmark */}

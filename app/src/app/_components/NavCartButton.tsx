@@ -9,7 +9,7 @@ export function NavCartButton({ price }: { price: number }) {
   const [open, setOpen] = useState(false);
 
   const count = items.length;
-  const total = count * price;
+  const total = items.reduce((sum, i) => sum + i.price, 0);
   const hasItems = count > 0;
 
   const triggerCheckout = () => {
@@ -51,7 +51,7 @@ export function NavCartButton({ price }: { price: number }) {
               </p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                 {String(count).padStart(2, "0")} {count === 1 ? "foto" : "fotos"} ·{" "}
-                {price > 0 ? `$${total.toLocaleString("es-AR")}` : "Sin precio"}
+                {total > 0 ? `$${total.toLocaleString("es-AR")}` : "Sin precio"}
               </p>
             </div>
             <button
@@ -96,9 +96,9 @@ export function NavCartButton({ price }: { price: number }) {
                         {item.bibNumber ? `#${item.bibNumber}` : "—"}
                       </p>
                     </div>
-                    {price > 0 && (
+                    {item.price > 0 && (
                       <span className="font-mono text-[11px] tracking-[0.06em] text-[color:var(--color-ink)] shrink-0">
-                        ${price.toLocaleString("es-AR")}
+                        ${item.price.toLocaleString("es-AR")}
                       </span>
                     )}
                     <button
@@ -117,7 +117,7 @@ export function NavCartButton({ price }: { price: number }) {
           {/* Footer */}
           {hasItems && (
             <div className="border-t border-[color:var(--color-grey-300)] px-7 py-6 flex flex-col gap-4 shrink-0">
-              {price > 0 && (
+              {total > 0 && (
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                     Total

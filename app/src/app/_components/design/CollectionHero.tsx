@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 
 type Props = {
   title: string;
@@ -24,15 +24,6 @@ export function CollectionHero({
   price,
   bannerFocalY = 50,
 }: Props) {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-
-  const imgY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const titleY = useTransform(scrollYProgress, [0, 1], ["0%", "-30%"]);
-
   // Split title into words for staggered reveal
   const words = title.split(" ");
 
@@ -54,17 +45,17 @@ export function CollectionHero({
 
   return (
     <section
-      ref={heroRef}
+      data-cursor="dark"
       className="relative bg-[color:var(--color-ink)] text-[color:var(--color-paper)] overflow-hidden"
       style={{ minHeight: "min(50vh, 420px)" }}
     >
-      {/* Background image with parallax */}
+      {/* Static background image */}
       {bannerSrc && (
-        <motion.div className="absolute inset-0" style={{ y: imgY }}>
+        <div className="absolute inset-0">
           <img
             src={bannerSrc}
             alt=""
-            className="w-full h-[120%] object-cover"
+            className="w-full h-full object-cover"
             style={{ objectPosition: `50% ${bannerFocalY}%` }}
           />
           <div
@@ -74,7 +65,7 @@ export function CollectionHero({
                 "linear-gradient(180deg, rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.35) 40%, rgba(10,10,10,0.95) 100%)",
             }}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* Decorative corners */}
@@ -91,10 +82,7 @@ export function CollectionHero({
       </div>
 
       {/* Main title */}
-      <motion.div
-        style={{ y: titleY }}
-        className="relative z-10 px-6 md:px-10 pt-16 md:pt-24 max-w-[1600px] mx-auto"
-      >
+      <div className="relative z-10 px-6 md:px-10 pt-16 md:pt-24 max-w-[1600px] mx-auto">
         {logoUrl && (
           <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
@@ -160,7 +148,7 @@ export function CollectionHero({
             <span className="font-mono text-[11px]">↓</span>
           </a>
         </motion.div>
-      </motion.div>
+      </div>
 
       {/* Bottom padding spacer */}
       <div className="relative z-10 pb-10" />

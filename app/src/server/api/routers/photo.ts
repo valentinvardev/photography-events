@@ -24,7 +24,7 @@ export const photoRouter = createTRPCRouter({
       const photos = await ctx.db.photo.findMany({
         where: { collectionId: input.collectionId },
         orderBy: { order: "asc" },
-        select: { id: true, bibNumber: true },
+        select: { id: true, bibNumber: true, price: true },
       });
       return [
         ...photos.filter((p) => !p.bibNumber),
@@ -48,7 +48,7 @@ export const photoRouter = createTRPCRouter({
           bibNumber: { contains: q, mode: "insensitive" },
         },
         orderBy: { order: "asc" },
-        select: { id: true, bibNumber: true, storageKey: true, previewKey: true, filename: true },
+        select: { id: true, bibNumber: true, price: true, storageKey: true, previewKey: true, filename: true },
       });
 
       let fuzzy: typeof exact = [];
@@ -59,7 +59,7 @@ export const photoRouter = createTRPCRouter({
             bibNumber: { not: null },
             AND: [{ bibNumber: { not: q } }],
           },
-          select: { id: true, bibNumber: true, storageKey: true, previewKey: true, filename: true },
+          select: { id: true, bibNumber: true, price: true, storageKey: true, previewKey: true, filename: true },
         });
         fuzzy = candidates.filter((p) => {
           const n = p.bibNumber?.trim() ?? "";
@@ -246,5 +246,11 @@ export const photoRouter = createTRPCRouter({
     .input(z.object({ id: z.string(), bibNumber: z.string().nullable() }))
     .mutation(({ ctx, input }) =>
       ctx.db.photo.update({ where: { id: input.id }, data: { bibNumber: input.bibNumber } }),
+    ),
+
+  setPrice: protectedProcedure
+    .input(z.object({ id: z.string(), price: z.number().positive().nullable() }))
+    .mutation(({ ctx, input }) =>
+      ctx.db.photo.update({ where: { id: input.id }, data: { price: input.price } }),
     ),
 });

@@ -40,7 +40,7 @@ export default async function EditCollectionPage({
       orderBy: [{ bibNumber: "asc" }, { order: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: { id: true, filename: true, bibNumber: true, storageKey: true },
+      select: { id: true, filename: true, bibNumber: true, storageKey: true, price: true },
     }),
   ]);
 
@@ -52,7 +52,7 @@ export default async function EditCollectionPage({
         : isS3Key(p.storageKey)
         ? await createS3DownloadUrl(p.storageKey, 3600)
         : await createSignedUrl(p.storageKey, 3600);
-      return { ...p, url };
+      return { ...p, price: p.price !== null ? Number(p.price) : null, url };
     }),
   );
 

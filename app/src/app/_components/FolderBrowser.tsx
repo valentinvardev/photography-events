@@ -21,7 +21,7 @@ function PhotoTile({
 }: {
   photoId: string;
   bibNumber: string | null;
-  index: number;
+  index: number; // kept for display (frame number)
   price: number;
   inCart: boolean;
   isFuzzy?: boolean;
@@ -38,10 +38,7 @@ function PhotoTile({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: Math.min(index * 0.02, 0.3), ease: [0.16, 1, 0.3, 1] }}
+    <div
       className="group relative cursor-pointer"
       onClick={() => url && onOpenLightbox(url)}
     >
@@ -102,7 +99,7 @@ function PhotoTile({
           </span>
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -110,17 +107,15 @@ function PhotoTile({
 
 function CartBar({
   count,
-  price,
+  total,
   onCheckout,
   onClear,
 }: {
   count: number;
-  price: number;
+  total: number;
   onCheckout: () => void;
   onClear: () => void;
 }) {
-  const total = count * price;
-
   return (
     <AnimatePresence>
       {count > 0 && (
@@ -142,7 +137,7 @@ function CartBar({
               <p className="font-display italic text-[20px] leading-tight truncate">
                 {count} {count === 1 ? "foto" : "fotos"} ·{" "}
                 <span className="text-[color:var(--color-paper)]/65">
-                  {price > 0 ? `$${total.toLocaleString("es-AR")}` : "—"}
+                  {total > 0 ? `$${total.toLocaleString("es-AR")}` : "—"}
                 </span>
               </p>
             </div>
@@ -328,16 +323,22 @@ export function FolderBrowser({
     setModal({ bib, photoIds: cartItems.map((i) => i.photoId) });
   };
 
+  // Map photoId -> effective price (photo.price ?? pricePerBib)
+  const priceMap = new Map<string, number>(
+    (allPhotos ?? []).map((p) => [p.id, p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib]),
+  );
+  const effectivePrice = (photoId: string) => priceMap.get(photoId) ?? pricePerBib;
+
   // Build a set of urls for current gallery view (for lightbox prev/next)
   const visiblePhotos = hasSearch
-    ? allSearchPhotos.map((p) => ({ id: p.id, bibNumber: p.bibNumber }))
+    ? allSearchPhotos.map((p) => ({ id: p.id, bibNumber: p.bibNumber, price: p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib }))
     : showingFace
       ? (faceBibs ?? []).flatMap((g) =>
-          g.photoIds.map((id) => ({ id, bibNumber: g.bib })),
+          g.photoIds.map((id) => ({ id, bibNumber: g.bib, price: effectivePrice(id) })),
         )
-      : (allPhotos ?? []).map((p) => ({ id: p.id, bibNumber: p.bibNumber }));
+      : (allPhotos ?? []).map((p) => ({ id: p.id, bibNumber: p.bibNumber, price: priceMap.get(p.id) ?? pricePerBib }));
 
-  const makeTileHandlers = (p: { id: string; bibNumber: string | null }) => ({
+  const makeTileHandlers = (p: { id: string; bibNumber: string | null; price: number }) => ({
     onOpenLightbox: (url: string) => {
       const sameBibIds =
         p.bibNumber && allPhotos
@@ -353,7 +354,7 @@ export function FolderBrowser({
       });
     },
     onToggleCart: (url: string) =>
-      toggleCart({ photoId: p.id, bibNumber: p.bibNumber, url }),
+      toggleCart({ photoId: p.id, bibNumber: p.bibNumber, url, price: p.price }),
   });
 
   const GRID = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10";
@@ -490,14 +491,14 @@ export function FolderBrowser({
           <div className={GRID}>
             {faceBibs.flatMap((g, gi) =>
               g.photoIds.map((id, pi) => {
-                const p = { id, bibNumber: g.bib };
+                const p = { id, bibNumber: g.bib, price: effectivePrice(id) };
                 return (
                   <PhotoTile
                     key={id}
                     photoId={id}
                     bibNumber={g.bib}
                     index={gi * 100 + pi}
-                    price={pricePerBib}
+                    price={p.price}
                     inCart={isInCart(id)}
                     {...makeTileHandlers(p)}
                   />
@@ -545,18 +546,21 @@ export function FolderBrowser({
                   ` · ${fuzzyPhotos.length} similar${fuzzyPhotos.length !== 1 ? "es" : ""}`}
               </p>
               <div className={GRID}>
-                {allSearchPhotos.map((p, i) => (
-                  <PhotoTile
-                    key={p.id}
-                    photoId={p.id}
-                    bibNumber={p.bibNumber}
-                    index={i}
-                    price={pricePerBib}
-                    inCart={isInCart(p.id)}
-                    isFuzzy={p.isFuzzy}
-                    {...makeTileHandlers(p)}
-                  />
-                ))}
+                {allSearchPhotos.map((p, i) => {
+                  const ep = p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib;
+                  return (
+                    <PhotoTile
+                      key={p.id}
+                      photoId={p.id}
+                      bibNumber={p.bibNumber}
+                      index={i}
+                      price={ep}
+                      inCart={isInCart(p.id)}
+                      isFuzzy={p.isFuzzy}
+                      {...makeTileHandlers({ ...p, price: ep })}
+                    />
+                  );
+                })}
               </div>
             </>
           )}
@@ -583,17 +587,20 @@ export function FolderBrowser({
                 {String(allPhotos.length).padStart(3, "0")} fotografías · clic para previsualizar
               </p>
               <div className={GRID}>
-                {allPhotos.map((p, i) => (
-                  <PhotoTile
-                    key={p.id}
-                    photoId={p.id}
-                    bibNumber={p.bibNumber}
-                    index={i}
-                    price={pricePerBib}
-                    inCart={isInCart(p.id)}
-                    {...makeTileHandlers(p)}
-                  />
-                ))}
+                {allPhotos.map((p, i) => {
+                  const ep = priceMap.get(p.id) ?? pricePerBib;
+                  return (
+                    <PhotoTile
+                      key={p.id}
+                      photoId={p.id}
+                      bibNumber={p.bibNumber}
+                      index={i}
+                      price={ep}
+                      inCart={isInCart(p.id)}
+                      {...makeTileHandlers({ ...p, price: ep })}
+                    />
+                  );
+                })}
               </div>
             </>
           ) : (
@@ -649,7 +656,7 @@ export function FolderBrowser({
       {/* ── Floating cart bar ──────────────────────────────── */}
       <CartBar
         count={cartItems.length}
-        price={pricePerBib}
+        total={cartItems.reduce((sum, i) => sum + i.price, 0)}
         onCheckout={cartCheckout}
         onClear={clearCart}
       />

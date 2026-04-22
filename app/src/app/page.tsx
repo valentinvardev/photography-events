@@ -29,7 +29,7 @@ export default async function HomePage() {
       <Hero collectionsCount={collections.length} />
 
       {/* ════════ EVENTS — contact-sheet grid ════════ */}
-      <section id="eventos" className="px-6 md:px-10 pt-12 pb-32">
+      <section id="eventos" data-cursor="light" className="px-6 md:px-10 pt-12 pb-32">
         <div className="max-w-[1600px] mx-auto">
           {/* section header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-16 md:mb-24">
@@ -74,7 +74,7 @@ export default async function HomePage() {
       </section>
 
       {/* ════════ BIG CTA ════════ */}
-      <section className="relative px-6 md:px-10 py-40 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] overflow-hidden">
+      <section data-cursor="dark" className="relative px-6 md:px-10 py-40 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] overflow-hidden">
         {/* decorative numbered grid lines */}
         <div className="pointer-events-none absolute inset-0 grid grid-cols-12 gap-0">
           {Array.from({ length: 11 }).map((_, i) => (
@@ -127,7 +127,7 @@ export default async function HomePage() {
       </section>
 
       {/* ════════ MERCADOPAGO STRIP ════════ */}
-      <section className="px-6 md:px-10 py-24 border-t border-[color:var(--color-grey-300)]">
+      <section data-cursor="light" className="px-6 md:px-10 py-24 border-t border-[color:var(--color-grey-300)]">
         <div className="max-w-[1600px] mx-auto flex flex-col items-center text-center gap-10">
           <Reveal as="p" className="eyebrow">
             Pagos
@@ -151,7 +151,7 @@ export default async function HomePage() {
       </section>
 
       {/* ════════ QUIÉN SOY ════════ */}
-      <section id="quien-soy" className="px-6 md:px-10 py-32 bg-[color:var(--color-paper)]">
+      <section id="quien-soy" data-cursor="light" className="px-6 md:px-10 py-32 bg-[color:var(--color-paper)]">
         <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 items-start">
           <Reveal as="p" className="col-span-12 md:col-span-3 eyebrow">
             (03) — Quién soy

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
 import { useCursorTrigger } from "./design/Cursor";
 
 export type EventCardCol = {
@@ -59,14 +58,11 @@ export function EventCard({
       {/* image frame */}
       <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--color-grey-900)] viewfinder-corners">
         {cover ? (
-          <motion.img
+          <img
             src={cover}
             alt={col.title}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
             style={{ objectPosition }}
-            initial={{ scale: 1.05, filter: "grayscale(0.4) contrast(0.95)" }}
-            whileHover={{ scale: 1.08, filter: "grayscale(0) contrast(1.05)" }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

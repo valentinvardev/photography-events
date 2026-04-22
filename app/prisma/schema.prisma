@@ -108,6 +108,7 @@ model Photo {
     width              Int?
     height             Int?
     order              Int       @default(0)
+    price              Decimal?  @db.Decimal(10, 2) // Per-photo override; null = use collection.pricePerBib
     previewKey         String?   // Watermarked preview storage key
     previewGeneratedAt DateTime? // Tracks staleness; regenerate when watermark changes
     isPublic           Boolean   @default(false) // Free photo — no purchase required

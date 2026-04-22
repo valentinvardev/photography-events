@@ -38,10 +38,16 @@ export const purchaseRouter = createTRPCRouter({
         select: { title: true, slug: true, pricePerBib: true },
       });
 
-      const photoCount = await ctx.db.photo.count({
+      const photos = await ctx.db.photo.findMany({
         where: { collectionId: input.collectionId, id: { in: input.photoIds } },
+        select: { id: true, price: true },
       });
-      if (photoCount === 0) throw new Error("No se encontraron fotos válidas para comprar.");
+      if (photos.length === 0) throw new Error("No se encontraron fotos válidas para comprar.");
+
+      const totalAmount = photos.reduce(
+        (sum, p) => sum + Number(p.price ?? collection.pricePerBib),
+        0,
+      );
 
       const purchase = await ctx.db.purchase.create({
         data: {
@@ -51,7 +57,7 @@ export const purchaseRouter = createTRPCRouter({
           buyerName: input.buyerName,
           buyerLastName: input.buyerLastName,
           buyerPhone: input.buyerPhone,
-          amountPaid: collection.pricePerBib.mul(input.photoIds.length),
+          amountPaid: totalAmount,
           photoIds: JSON.stringify(input.photoIds),
         },
       });
@@ -60,9 +66,9 @@ export const purchaseRouter = createTRPCRouter({
         body: {
           items: [{
             id: input.collectionId,
-            title: `${input.photoIds.length} foto${input.photoIds.length !== 1 ? "s" : ""} — ${collection.title}`,
-            quantity: input.photoIds.length,
-            unit_price: Number(collection.pricePerBib),
+            title: `${photos.length} foto${photos.length !== 1 ? "s" : ""} — ${collection.title}`,
+            quantity: 1,
+            unit_price: totalAmount,
             currency_id: "ARS",
           }],
           payer: {

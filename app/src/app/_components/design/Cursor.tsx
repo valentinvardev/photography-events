@@ -24,20 +24,14 @@ export function useCursorTrigger(variant: CursorVariant, label = "") {
   };
 }
 
-function getBgLuminance(cx: number, cy: number): "light" | "dark" {
-  let el = document.elementFromPoint(cx, cy) as HTMLElement | null;
-  for (let i = 0; el && i < 10; i++) {
-    const bg = window.getComputedStyle(el).backgroundColor;
-    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-      const m = bg.match(/[\d.]+/g);
-      if (m && m.length >= 3) {
-        const a = m[3] !== undefined ? +m[3]! : 1;
-        if (a > 0.05) {
-          const lum = (0.299 * +m[0]! + 0.587 * +m[1]! + 0.114 * +m[2]!) / 255;
-          return lum > 0.5 ? "light" : "dark";
-        }
-      }
-    }
+// Sections declare their background theme via data-cursor="dark"|"light".
+// Walk up from the hovered element — first match wins.
+function getSectionTheme(target: EventTarget | null): "light" | "dark" {
+  let el = target as HTMLElement | null;
+  while (el) {
+    const hint = el.dataset?.cursor;
+    if (hint === "dark") return "dark";
+    if (hint === "light") return "light";
     el = el.parentElement;
   }
   return "light";
@@ -64,6 +58,9 @@ export function Cursor() {
     document.body.classList.add("has-custom-cursor");
 
     const move = (e: MouseEvent) => {
+      // Theme detection is instant — just a data-attribute walk up the DOM
+      setBgTheme(getSectionTheme(e.target));
+
       if (firstMove.current) {
         x.set(e.clientX);
         y.set(e.clientY);
@@ -71,14 +68,12 @@ export function Cursor() {
         sy.set(e.clientY);
         firstMove.current = false;
         setHasMoved(true);
-        setBgTheme(getBgLuminance(e.clientX, e.clientY));
         return;
       }
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         x.set(e.clientX);
         y.set(e.clientY);
-        setBgTheme(getBgLuminance(e.clientX, e.clientY));
       });
     };
     window.addEventListener("mousemove", move);

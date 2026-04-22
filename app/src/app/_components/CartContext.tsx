@@ -6,6 +6,7 @@ export type CartItem = {
   photoId: string;
   bibNumber: string | null;
   url: string;
+  price: number;
 };
 
 type CartCtx = {

@@ -11,6 +11,7 @@ type Photo = {
   bibNumber: string | null;
   storageKey: string;
   url: string | null;
+  price: number | null;
 };
 
 // ── Shimmer skeleton ──────────────────────────────────────────────────────────
@@ -155,6 +156,63 @@ function LightboxBibEditor({ photo }: { photo: Photo }) {
         </button>
       )}
     </div>
+  );
+}
+
+// ── Price editor ──────────────────────────────────────────────────────────────
+
+function PriceEditor({ photo }: { photo: Photo }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState("");
+
+  const setPrice = api.photo.setPrice.useMutation({ onSuccess: () => router.refresh() });
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = inputVal.trim();
+    const parsed = trimmed === "" ? null : parseFloat(trimmed.replace(",", "."));
+    if (trimmed === "" && photo.price === null) return;
+    if (parsed !== null && isNaN(parsed)) return;
+    const newVal = parsed !== null && parsed > 0 ? parsed : null;
+    if (newVal === photo.price) return;
+    setPrice.mutate({ id: photo.id, price: newVal });
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="text"
+        inputMode="decimal"
+        value={inputVal}
+        onChange={(e) => setInputVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setEditing(false); setInputVal(""); }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        placeholder="precio"
+        className="w-20 text-xs px-1.5 py-0.5 rounded border border-emerald-400 bg-white text-gray-800 focus:outline-none"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setInputVal(photo.price !== null ? String(photo.price) : ""); setEditing(true); }}
+      className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-all hover:bg-white/20"
+      style={
+        photo.price !== null
+          ? { background: "rgba(16,185,129,0.2)", color: "#10b981", border: "1px solid rgba(16,185,129,0.4)" }
+          : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", border: "1px dashed rgba(255,255,255,0.25)" }
+      }
+    >
+      {photo.price !== null ? `$${photo.price.toLocaleString("es-AR")}` : "+ precio"}
+      {setPrice.isPending && <span className="opacity-50">…</span>}
+    </button>
   );
 }
 
@@ -306,8 +364,8 @@ export function PhotoManager({
                   <PhotoSkeleton />
                 )}
 
-                {/* Bib badge */}
-                <div className="absolute top-1.5 left-1.5 z-10 transition-opacity duration-200 group-hover:opacity-0">
+                {/* Bib + price badges */}
+                <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 transition-opacity duration-200 group-hover:opacity-0">
                   {bibs.length > 0 ? (
                     <span className="text-xs font-bold px-1.5 py-0.5 rounded"
                       style={{ background: "rgba(0,0,0,0.6)", color: "#fbbf24" }}>
@@ -317,6 +375,12 @@ export function PhotoManager({
                     <span className="text-xs px-1.5 py-0.5 rounded"
                       style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px dashed #ef444460" }}>
                       sin dorsal
+                    </span>
+                  )}
+                  {photo.price !== null && (
+                    <span className="text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: "rgba(16,185,129,0.25)", color: "#10b981" }}>
+                      ${photo.price.toLocaleString("es-AR")}
                     </span>
                   )}
                 </div>
@@ -343,7 +407,10 @@ export function PhotoManager({
                         </svg>
                       </button>
                     </div>
-                    <div className="p-2"><MultiBibEditor photo={photo} /></div>
+                    <div className="p-2 flex flex-col gap-1">
+                      <MultiBibEditor photo={photo} />
+                      <PriceEditor photo={photo} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -403,6 +470,7 @@ export function PhotoManager({
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
               <LightboxBibEditor photo={currentPhoto} />
+              <PriceEditor photo={currentPhoto} />
               <button onClick={closeLightbox} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white flex-shrink-0">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
