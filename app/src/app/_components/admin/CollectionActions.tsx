@@ -33,7 +33,7 @@ export function CollectionActions({
       <button
         onClick={() => setConfirming(true)}
         disabled={del.isPending}
-        className="text-sm text-red-400 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+        className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-safelight)] hover:underline underline-offset-4 disabled:opacity-40 transition-opacity px-2 py-1.5"
       >
         Eliminar
       </button>

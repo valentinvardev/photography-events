@@ -9,21 +9,32 @@ export default async function SalesPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
-        <p className="text-gray-500 text-sm mt-0.5">{sales.total} venta{sales.total !== 1 ? "s" : ""} registrada{sales.total !== 1 ? "s" : ""}</p>
+      <div className="mb-10">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+          Historial de pagos
+        </p>
+        <h1
+          className="font-display italic font-light leading-[0.92] tracking-[-0.03em]"
+          style={{ fontSize: "clamp(36px, 5vw, 72px)" }}
+        >
+          Ventas.
+        </h1>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-8">
         {[
-          { label: "Total ventas", value: sales.total },
-          { label: "Aprobadas", value: approved.length },
-          { label: "Pendientes", value: sales.items.filter(s => s.status === "PENDING").length },
-          { label: "Ingresos", value: `$${totalRevenue.toLocaleString("es-AR")}`, isText: true },
+          { label: "Total ventas",  value: sales.total },
+          { label: "Aprobadas",     value: approved.length },
+          { label: "Pendientes",    value: sales.items.filter((s) => s.status === "PENDING").length },
+          { label: "Ingresos ARS",  value: `$${totalRevenue.toLocaleString("es-AR")}` },
         ].map((c, i) => (
-          <div key={i} className="rounded-2xl border border-gray-100 bg-white shadow-sm px-4 py-4">
-            <p className="text-xs text-gray-500 mb-2">{c.label}</p>
-            <p className={`font-bold text-gray-900 ${c.isText ? "text-lg" : "text-2xl"}`}>{c.value}</p>
+          <div key={i} className="bg-[color:var(--color-paper)] px-5 py-5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+              {c.label}
+            </p>
+            <p className="font-display italic font-light text-[40px] leading-none text-[color:var(--color-ink)]">
+              {c.value}
+            </p>
           </div>
         ))}
       </div>

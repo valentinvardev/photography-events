@@ -26,7 +26,6 @@ export default async function EditCollectionPage({
 
   const { db } = await import("~/server/db");
 
-  // Build filter — search by bib number if q is set
   const where = {
     collectionId: id,
     ...(q ? { bibNumber: { contains: q } } : {}),
@@ -44,7 +43,6 @@ export default async function EditCollectionPage({
     }),
   ]);
 
-  // Generate signed URLs only for the current page (S3 or Supabase, depending on key prefix)
   const photos = await Promise.all(
     rawPhotos.map(async (p) => {
       const url = p.storageKey.startsWith("http")
@@ -56,13 +54,13 @@ export default async function EditCollectionPage({
     }),
   );
 
-  const filteredTotal = q
-    ? await db.photo.count({ where })
-    : totalCount;
+  const filteredTotal = q ? await db.photo.count({ where }) : totalCount;
   const totalPages = Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
 
   const eventDate = collection.eventDate
-    ? new Date(collection.eventDate).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
+    ? new Date(collection.eventDate).toLocaleDateString("es-AR", {
+        day: "numeric", month: "long", year: "numeric",
+      })
     : null;
 
   return (
@@ -70,39 +68,45 @@ export default async function EditCollectionPage({
       {/* Back */}
       <Link
         href="/admin/colecciones"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors"
+        className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors mb-8"
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        Eventos
+        ← Eventos
       </Link>
 
-      {/* Event header card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4 min-w-0">
+      {/* Event header */}
+      <div className="border border-[color:var(--color-grey-300)] mb-6">
+        <div className="p-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-5 min-w-0">
             {collection.coverUrl ? (
-              <img src={collection.coverUrl} alt={collection.title} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={collection.coverUrl}
+                alt={collection.title}
+                className="w-16 h-16 object-cover shrink-0"
+              />
             ) : (
-              <div className="w-16 h-16 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                <svg className="w-7 h-7 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="w-16 h-16 bg-[color:var(--color-grey-100)] border border-[color:var(--color-grey-200)] flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-[color:var(--color-grey-300)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 </svg>
               </div>
             )}
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{collection.title}</h1>
-              <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-1">
+                Evento
+              </p>
+              <h1 className="font-display italic font-light text-[28px] leading-none tracking-[-0.02em] text-[color:var(--color-ink)]">
+                {collection.title}
+              </h1>
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
                 {eventDate && (
-                  <span className="text-xs text-gray-500 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)]">
                     {eventDate}
                   </span>
                 )}
-                <span className="text-xs text-gray-400">/colecciones/{collection.slug}</span>
+                <span className="font-mono text-[9px] text-[color:var(--color-grey-400)]">
+                  /colecciones/{collection.slug}
+                </span>
               </div>
             </div>
           </div>
@@ -111,7 +115,7 @@ export default async function EditCollectionPage({
             <Link
               href={`/colecciones/${collection.slug}`}
               target="_blank"
-              className="text-xs px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all"
+              className="px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
             >
               ↗ Ver público
             </Link>
@@ -119,58 +123,67 @@ export default async function EditCollectionPage({
           </div>
         </div>
 
-        {/* Face reindex */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <FaceReindexButton collectionId={collection.id} totalPhotos={totalCount} />
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-px border-t border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)]">
+          {[
+            { label: "Fotos totales", value: totalCount, color: undefined },
+            {
+              label: "Sin dorsal",
+              value: unidentifiedCount,
+              color: unidentifiedCount > 0 ? "#92400e" : "#16a34a",
+            },
+            {
+              label: "Precio ARS",
+              value: `$${Number(collection.pricePerBib ?? 0).toLocaleString("es-AR")}`,
+              color: undefined,
+            },
+          ].map((c, i) => (
+            <div key={i} className="bg-[color:var(--color-paper)] px-5 py-4 text-center">
+              <p className="font-display italic font-light text-[32px] leading-none" style={{ color: c.color ?? "var(--color-ink)" }}>
+                {c.value}
+              </p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mt-1">
+                {c.label}
+              </p>
+            </div>
+          ))}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-gray-100">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{totalCount}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Fotos totales</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold" style={{ color: unidentifiedCount > 0 ? "#f59e0b" : "#16a34a" }}>{unidentifiedCount}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Sin dorsal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{Number(collection.pricePerBib ?? 0).toLocaleString("es-AR")}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Precio ARS</p>
-          </div>
+        {/* Reindex */}
+        <div className="px-6 py-4 border-t border-[color:var(--color-grey-300)]">
+          <FaceReindexButton collectionId={collection.id} totalPhotos={totalCount} />
         </div>
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-semibold text-gray-900 text-sm mb-4">Subir fotos</h2>
-            <PhotoUploader collectionId={id} />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)]">
+        <div className="bg-[color:var(--color-paper)] p-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+            Subir fotos
+          </p>
+          <PhotoUploader collectionId={id} />
         </div>
 
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="mb-4">
-              <h2 className="font-semibold text-gray-900 text-sm">
-                Galería
-                {unidentifiedCount > 0 && (
-                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "#fef3c7", color: "#92400e" }}>
-                    {unidentifiedCount} sin dorsal
-                  </span>
-                )}
-              </h2>
-            </div>
-            <PhotoManager
-              collectionId={id}
-              photos={photos}
-              page={page}
-              totalPages={totalPages}
-              totalCount={filteredTotal}
-              q={q ?? ""}
-            />
+        <div className="lg:col-span-2 bg-[color:var(--color-paper)] p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+              Galería
+            </p>
+            {unidentifiedCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#92400e]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#92400e]" />
+                {unidentifiedCount} sin dorsal
+              </span>
+            )}
           </div>
+          <PhotoManager
+            collectionId={id}
+            photos={photos}
+            page={page}
+            totalPages={totalPages}
+            totalCount={filteredTotal}
+            q={q ?? ""}
+          />
         </div>
       </div>
     </div>

@@ -43,68 +43,93 @@ export function SalesTable({ items }: { items: Sale[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm py-20 text-center">
-        <p className="text-gray-900 font-medium mb-1">Sin ventas aún</p>
-        <p className="text-gray-400 text-sm">Las ventas aparecerán aquí cuando se realice una compra</p>
+      <div className="border border-[color:var(--color-grey-300)] py-20 text-center">
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+          Sin ventas aún
+        </p>
+        <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-400)] mt-2">
+          Las ventas aparecerán aquí cuando se realice una compra
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-x-auto">
-      <table className="w-full text-sm min-w-[640px]">
+    <div className="border border-[color:var(--color-grey-300)] overflow-x-auto">
+      <table className="w-full min-w-[640px]">
         <thead>
-          <tr className="border-b border-gray-100 text-left bg-gray-50">
-            {["Email comprador", "Dorsal", "Colección", "Estado", "Monto", "Fecha", "Acciones"].map((h, i) => (
-              <th key={i} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+          <tr className="border-b border-[color:var(--color-grey-300)]">
+            {["Email comprador", "Dorsal", "Colección", "Estado", "Monto", "Fecha", "Acciones"].map((h) => (
+              <th key={h} className="px-4 py-3 text-left font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {items.map((sale) => (
-            <tr key={sale.id} className="border-t border-gray-50 transition-colors hover:bg-gray-50">
-              <td className="px-5 py-4">
-                <p className="text-gray-700">{sale.buyerEmail}</p>
-                {sale.buyerName && <p className="text-gray-400 text-xs">{sale.buyerName}</p>}
+          {items.map((sale, i) => (
+            <tr
+              key={sale.id}
+              className={`hover:bg-[color:var(--color-grey-100)] transition-colors ${
+                i < items.length - 1 ? "border-b border-[color:var(--color-grey-100)]" : ""
+              }`}
+            >
+              <td className="px-4 py-3">
+                <p className="font-mono text-[10px] text-[color:var(--color-ink)]">{sale.buyerEmail}</p>
+                {sale.buyerName && (
+                  <p className="font-mono text-[9px] text-[color:var(--color-grey-400)] mt-0.5">{sale.buyerName}</p>
+                )}
               </td>
-              <td className="px-5 py-4">
-                <span className="font-mono font-bold text-gray-900">
-                  {sale.bibNumber ? `#${sale.bibNumber}` : "—"}
-                </span>
+
+              <td className="px-4 py-3 font-mono text-[12px] font-bold text-[color:var(--color-ink)]">
+                {sale.bibNumber ? `#${sale.bibNumber}` : (
+                  <span className="font-normal text-[color:var(--color-grey-400)]">—</span>
+                )}
               </td>
-              <td className="px-5 py-4 text-gray-500 text-xs">{sale.collection.title}</td>
-              <td className="px-5 py-4"><StatusBadge status={sale.status} /></td>
-              <td className="px-5 py-4 font-semibold text-gray-900">
+
+              <td className="px-4 py-3 font-mono text-[10px] text-[color:var(--color-grey-500)]">
+                {sale.collection.title}
+              </td>
+
+              <td className="px-4 py-3">
+                <StatusBadge status={sale.status} />
+              </td>
+
+              <td className="px-4 py-3 font-mono text-[11px] font-bold text-[color:var(--color-ink)]">
                 ${Number(sale.amountPaid).toLocaleString("es-AR")}
               </td>
-              <td className="px-5 py-4 text-gray-400 text-xs">
-                {new Date(sale.createdAt).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
+
+              <td className="px-4 py-3 font-mono text-[10px] text-[color:var(--color-grey-500)]">
+                {new Date(sale.createdAt).toLocaleDateString("es-AR", {
+                  day: "2-digit", month: "short", year: "numeric",
+                })}
               </td>
-              <td className="px-5 py-4">
-                <div className="flex items-center gap-2">
+
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   {sale.status !== "APPROVED" && (
                     <button
                       onClick={() => setConfirmSale(sale)}
                       disabled={approve.isPending}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50 bg-green-50 text-green-700 hover:bg-green-100"
+                      className="px-2.5 py-1 border border-[#16a34a] font-mono text-[9px] uppercase tracking-[0.12em] text-[#16a34a] hover:bg-[#16a34a] hover:text-white transition-colors disabled:opacity-40"
                     >
-                      ✓ Aprobar
+                      Aprobar
                     </button>
                   )}
                   {sale.status === "APPROVED" && sale.downloadToken && (
                     <>
                       <button
                         onClick={() => copyDownloadLink(sale.downloadToken!, sale.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        className="px-2.5 py-1 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
                       >
-                        {copiedId === sale.id ? "¡Copiado!" : "↗ Link"}
+                        {copiedId === sale.id ? "Copiado" : "↗ Link"}
                       </button>
                       <button
                         onClick={() => resendEmail.mutate({ purchaseId: sale.id })}
                         disabled={resendEmail.isPending}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                        className="px-2.5 py-1 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors disabled:opacity-40"
                       >
-                        {emailSentId === sale.id ? "✓ Enviado" : "✉ Email"}
+                        {emailSentId === sale.id ? "✓ Enviado" : "Email"}
                       </button>
                     </>
                   )}
@@ -114,6 +139,7 @@ export function SalesTable({ items }: { items: Sale[] }) {
           ))}
         </tbody>
       </table>
+
       {confirmSale && (
         <ConfirmModal
           title="Aprobar compra manualmente"
@@ -129,16 +155,16 @@ export function SalesTable({ items }: { items: Sale[] }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    APPROVED: { bg: "#f0fdf4", text: "#16a34a", label: "Aprobada" },
-    PENDING:  { bg: "#fef3c7", text: "#92400e", label: "Pendiente" },
-    REJECTED: { bg: "#fef2f2", text: "#ef4444", label: "Rechazada" },
-    REFUNDED: { bg: "#eff6ff", text: "#2563eb", label: "Reembolsada" },
+  const map: Record<string, { color: string; label: string }> = {
+    APPROVED: { color: "#16a34a", label: "Aprobada"    },
+    PENDING:  { color: "#92400e", label: "Pendiente"   },
+    REJECTED: { color: "var(--color-safelight)", label: "Rechazada"  },
+    REFUNDED: { color: "#2563eb", label: "Reembolsada" },
   };
-  const s = map[status] ?? { bg: "#f1f5f9", text: "#64748b", label: status };
+  const s = map[status] ?? { color: "var(--color-grey-500)", label: status };
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: s.bg, color: s.text }}>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.text }} />
+    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: s.color }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: s.color }} />
       {s.label}
     </span>
   );

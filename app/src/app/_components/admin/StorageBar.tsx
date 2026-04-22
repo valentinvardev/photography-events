@@ -13,32 +13,35 @@ export function StorageBar() {
 
   if (!data) {
     return (
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>Almacenamiento</span>
-          <span>Calculando...</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)]">
+            Almacenamiento
+          </span>
+          <span className="font-mono text-[9px] text-[color:var(--color-grey-400)]">Calculando…</span>
         </div>
-        <div className="h-1 rounded-full animate-pulse bg-gray-200" />
+        <div className="h-px bg-[color:var(--color-grey-200)] animate-pulse" />
       </div>
     );
   }
 
   const pct = Math.min((data.usedBytes / data.limitBytes) * 100, 100);
-  const barColor = pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "#10b981";
+  const barColor = pct > 90 ? "var(--color-safelight)" : pct > 70 ? "#92400e" : "#16a34a";
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-600">Almacenamiento</span>
-        <span className="text-gray-400">
-          <span className="text-gray-600">{formatBytes(data.usedBytes)}</span>
-          {" "}de {formatBytes(data.limitBytes)}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)]">
+          Almacenamiento
+        </span>
+        <span className="font-mono text-[9px] text-[color:var(--color-grey-500)]">
+          {formatBytes(data.usedBytes)} / {formatBytes(data.limitBytes)}
         </span>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden bg-gray-100">
+      <div className="h-px bg-[color:var(--color-grey-200)] relative overflow-visible">
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: barColor }}
+          className="absolute inset-y-0 left-0 transition-all duration-700"
+          style={{ width: `${pct}%`, height: 2, top: -0.5, background: barColor }}
         />
       </div>
     </div>
