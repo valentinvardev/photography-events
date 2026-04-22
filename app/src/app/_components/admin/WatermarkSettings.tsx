@@ -65,63 +65,91 @@ export function WatermarkSettings() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Drop zone */}
       <div
-        className="relative rounded-xl border-2 border-dashed cursor-pointer transition-all group overflow-hidden"
-        style={{ borderColor: status === "error" ? "#fecaca" : "#e2e8f0", background: "#f8fafc", height: "160px" }}
+        className="relative border border-dashed border-[color:var(--color-grey-300)] hover:border-[color:var(--color-ink)] cursor-pointer transition-colors overflow-hidden"
+        style={{ height: 160, background: "var(--color-paper)" }}
         onClick={() => !busy && inputRef.current?.click()}
       >
         {status === "loading" ? (
           <div className="w-full h-full flex items-center justify-center">
-            <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#bfdbfe", borderTopColor: "#2563eb" }} />
+            <div className="w-5 h-5 border border-[color:var(--color-grey-300)] border-t-[color:var(--color-ink)] rounded-full animate-spin" />
           </div>
         ) : displayed ? (
           <>
-            <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)", backgroundSize: "16px 16px", backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px" }} />
-            <img src={displayed} alt="Watermark" className="relative w-full h-full object-contain p-6 transition-opacity group-hover:opacity-75" />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: "rgba(0,0,0,0.75)", color: "#fff" }}>Cambiar imagen</span>
+            {/* Transparency checker pattern */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",
+                backgroundSize: "16px 16px",
+                backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+              }}
+            />
+            <img src={displayed} alt="Watermark" className="relative w-full h-full object-contain p-6" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-[color:var(--color-ink)]/30">
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-paper)]">
+                Cambiar imagen
+              </span>
             </div>
           </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-            <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <svg className="w-8 h-8 text-[color:var(--color-grey-300)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-xs text-gray-400">Subir PNG con transparencia</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)]">
+              Subir PNG con transparencia
+            </p>
           </div>
         )}
+
         {busy && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/70">
-            <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#bfdbfe", borderTopColor: "#2563eb" }} />
-            <p className="text-xs text-gray-500">{status === "uploading" ? "Subiendo..." : "Eliminando..."}</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[color:var(--color-paper)]/80">
+            <div className="w-5 h-5 border border-[color:var(--color-grey-300)] border-t-[color:var(--color-ink)] rounded-full animate-spin" />
+            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)]">
+              {status === "uploading" ? "Subiendo…" : "Eliminando…"}
+            </p>
           </div>
         )}
       </div>
 
-      <input ref={inputRef} type="file" accept="image/png,image/svg+xml,image/webp" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ""; }} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/svg+xml,image/webp"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ""; }}
+      />
 
       <div className="flex items-center gap-3">
-        <button onClick={() => inputRef.current?.click()} disabled={busy}
-          className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl font-semibold text-white disabled:opacity-50 transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #1a3a6b, #2563eb)" }}>
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="inline-flex items-center gap-2 px-4 py-2.5 border border-[color:var(--color-ink)] font-mono text-[10px] uppercase tracking-[0.18em] hover:bg-[color:var(--color-ink)] hover:text-[color:var(--color-paper)] transition-colors disabled:opacity-40"
+        >
           {currentUrl ? "Reemplazar" : "Subir marca de agua"}
         </button>
         {currentUrl && (
-          <button onClick={handleDelete} disabled={busy}
-            className="text-xs px-3 py-2 rounded-xl disabled:opacity-50 transition-all bg-red-50 text-red-500 hover:bg-red-100">
+          <button
+            onClick={handleDelete}
+            disabled={busy}
+            className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-safelight)] hover:underline underline-offset-4 disabled:opacity-40 transition-opacity"
+          >
             Eliminar
           </button>
         )}
       </div>
 
-      {msg && <p className="text-xs" style={{ color: status === "error" ? "#ef4444" : "#16a34a" }}>{msg}</p>}
-
-      <div className="rounded-xl px-4 py-3 flex gap-3 bg-gray-50 border border-gray-100">
-        <p className="text-xs leading-relaxed text-gray-500">
-          La marca de agua se aplica directamente a los píxeles de la imagen — no se puede quitar con DevTools.
+      {msg && (
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: status === "error" ? "var(--color-safelight)" : "#16a34a" }}>
+          {msg}
         </p>
-      </div>
+      )}
+
+      <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-500)] border-l-2 border-[color:var(--color-grey-300)] pl-3 py-1">
+        La marca de agua se aplica a los píxeles — no se puede quitar con DevTools.
+      </p>
     </div>
   );
 }

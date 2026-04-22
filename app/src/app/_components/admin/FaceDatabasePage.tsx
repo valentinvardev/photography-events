@@ -4,7 +4,6 @@ import { useState } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type FaceRow = RouterOutputs["face"]["list"]["items"][number];
-
 type Collection = { id: string; title: string; slug: string };
 
 export function FaceDatabasePage({ collections }: { collections: Collection[] }) {
@@ -30,35 +29,48 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Base de datos facial</h1>
-      <p className="text-gray-500 text-sm mb-8">
-        Rostros indexados por Amazon Rekognition, vinculados a fotos y compras.
-      </p>
+      <div className="mb-10">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+          Amazon Rekognition
+        </p>
+        <h1
+          className="font-display italic font-light leading-[0.92] tracking-[-0.03em]"
+          style={{ fontSize: "clamp(36px, 5vw, 72px)" }}
+        >
+          Reconocimiento.
+        </h1>
+      </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-8">
         {[
           { label: "Rostros indexados", value: stats?.totalFaces ?? "—" },
           { label: "Eventos con índice", value: stats?.totalCollections ?? "—" },
-          { label: "Registros en esta vista", value: data?.total ?? "—" },
+          { label: "Registros en vista", value: data?.total ?? "—" },
         ].map((c, i) => (
-          <div key={i} className="rounded-2xl border border-gray-100 bg-white shadow-sm px-4 py-4">
-            <p className="text-xs text-gray-500 mb-2">{c.label}</p>
-            <p className="text-2xl font-bold text-gray-900">{c.value}</p>
+          <div key={i} className="bg-[color:var(--color-paper)] px-5 py-5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+              {c.label}
+            </p>
+            <p className="font-display italic font-light text-[40px] leading-none text-[color:var(--color-ink)]">
+              {c.value}
+            </p>
           </div>
         ))}
       </div>
 
       {/* Filter */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtrar por evento</span>
+      <div className="border border-[color:var(--color-grey-300)] px-5 py-4 mb-4 flex flex-wrap gap-2 items-center">
+        <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mr-2">
+          Filtrar
+        </span>
         <button
           onClick={() => handleCollectionChange(undefined)}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{
-            background: !collectionId ? "#1d4ed8" : "#f3f4f6",
-            color: !collectionId ? "white" : "#374151",
-          }}
+          className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors border ${
+            !collectionId
+              ? "bg-[color:var(--color-ink)] text-[color:var(--color-paper)] border-[color:var(--color-ink)]"
+              : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-700)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)]"
+          }`}
         >
           Todos
         </button>
@@ -66,11 +78,11 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
           <button
             key={c.id}
             onClick={() => handleCollectionChange(c.id)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: collectionId === c.id ? "#1d4ed8" : "#f3f4f6",
-              color: collectionId === c.id ? "white" : "#374151",
-            }}
+            className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors border ${
+              collectionId === c.id
+                ? "bg-[color:var(--color-ink)] text-[color:var(--color-paper)] border-[color:var(--color-ink)]"
+                : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-700)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)]"
+            }`}
           >
             {c.title}
           </button>
@@ -78,103 +90,108 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="border border-[color:var(--color-grey-300)]">
         {isLoading ? (
-          <div className="p-10 text-center text-gray-400 text-sm">Cargando registros...</div>
+          <div className="py-16 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+              Cargando registros…
+            </p>
+          </div>
         ) : !data?.items.length ? (
-          <div className="p-10 text-center">
-            <p className="text-gray-400 text-sm">No hay rostros indexados todavía.</p>
-            <p className="text-xs text-gray-300 mt-1">
-              Se generan automáticamente al subir fotos o al usar "Re-indexar" en un evento.
+          <div className="py-16 text-center">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+              Sin rostros indexados
+            </p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-400)] mt-2">
+              Se generan al subir fotos o al usar Re-indexar en un evento
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Face ID</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Dorsal</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Evento</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Confianza</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Compra</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Indexado</th>
-                  <th className="px-4 py-3" />
+                <tr className="border-b border-[color:var(--color-grey-300)]">
+                  {["Face ID", "Dorsal", "Evento", "Confianza", "Compra", "Fecha", ""].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {data.items.map((row: FaceRow) => (
-                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Face ID */}
+              <tbody>
+                {data.items.map((row: FaceRow, i) => (
+                  <tr
+                    key={row.id}
+                    className={`hover:bg-[color:var(--color-grey-100)] transition-colors ${
+                      i < data.items.length - 1 ? "border-b border-[color:var(--color-grey-100)]" : ""
+                    }`}
+                  >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                      <span className="font-mono text-[10px] text-[color:var(--color-grey-500)] bg-[color:var(--color-grey-100)] px-2 py-0.5">
                         {row.rekFaceId.slice(-10)}
                       </span>
                     </td>
 
-                    {/* Dorsal */}
-                    <td className="px-4 py-3">
-                      {row.photo.bibNumber ? (
-                        <span className="font-bold text-gray-900">#{row.photo.bibNumber}</span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">sin dorsal</span>
+                    <td className="px-4 py-3 font-mono text-[12px] font-bold text-[color:var(--color-ink)]">
+                      {row.photo.bibNumber ? `#${row.photo.bibNumber}` : (
+                        <span className="font-normal text-[color:var(--color-grey-400)]">—</span>
                       )}
                     </td>
 
-                    {/* Evento */}
                     <td className="px-4 py-3">
                       <a
                         href={`/admin/colecciones/${row.collection.id}`}
-                        className="text-blue-600 hover:underline text-xs font-medium"
+                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-ink)] hover:underline underline-offset-4"
                       >
                         {row.collection.title}
                       </a>
                     </td>
 
-                    {/* Confianza */}
                     <td className="px-4 py-3">
                       {row.confidence != null ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="w-14 h-px bg-[color:var(--color-grey-300)] relative">
                             <div
-                              className="h-full rounded-full"
+                              className="absolute inset-y-0 left-0 h-full"
                               style={{
                                 width: `${row.confidence}%`,
-                                background: row.confidence > 90 ? "#16a34a" : row.confidence > 70 ? "#f59e0b" : "#dc2626",
+                                height: 3,
+                                top: -1,
+                                background: row.confidence > 90 ? "#16a34a" : row.confidence > 70 ? "#92400e" : "var(--color-safelight)",
                               }}
                             />
                           </div>
-                          <span className="text-xs text-gray-500">{row.confidence.toFixed(0)}%</span>
+                          <span className="font-mono text-[10px] text-[color:var(--color-grey-500)]">
+                            {row.confidence.toFixed(0)}%
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-gray-300 text-xs">—</span>
+                        <span className="text-[color:var(--color-grey-400)]">—</span>
                       )}
                     </td>
 
-                    {/* Compra */}
                     <td className="px-4 py-3">
                       {row.purchase ? (
                         <div>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                            ✓ Comprado
+                          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#16a34a]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                            Comprado
                           </span>
-                          <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[140px]">
+                          <p className="font-mono text-[9px] text-[color:var(--color-grey-500)] mt-0.5 truncate max-w-[140px]">
                             {row.purchase.buyerEmail}
                           </p>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-300">Sin compra</span>
+                        <span className="font-mono text-[10px] text-[color:var(--color-grey-400)]">Sin compra</span>
                       )}
                     </td>
 
-                    {/* Fecha */}
-                    <td className="px-4 py-3 text-xs text-gray-400">
+                    <td className="px-4 py-3 font-mono text-[10px] text-[color:var(--color-grey-500)]">
                       {new Date(row.createdAt).toLocaleDateString("es-AR", {
                         day: "2-digit", month: "2-digit", year: "2-digit",
                       })}
                     </td>
 
-                    {/* Acciones */}
                     <td className="px-4 py-3">
                       <button
                         onClick={() => {
@@ -183,10 +200,10 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
                           }
                         }}
                         disabled={deleteMut.isPending}
-                        className="text-xs text-gray-300 hover:text-red-400 transition-colors px-2 py-1 rounded"
-                        title="Eliminar registro"
+                        className="font-mono text-[10px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-safelight)] transition-colors disabled:opacity-40 px-2 py-1"
+                        title="Eliminar"
                       >
-                        ✕
+                        ×
                       </button>
                     </td>
                   </tr>
@@ -198,22 +215,22 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-400">
-              Mostrando {(page - 1) * 60 + 1}–{Math.min(page * 60, data?.total ?? 0)} de {data?.total ?? 0}
+          <div className="flex items-center justify-between px-5 py-3 border-t border-[color:var(--color-grey-300)]">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-500)]">
+              {(page - 1) * 60 + 1}–{Math.min(page * 60, data?.total ?? 0)} de {data?.total ?? 0}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:border-blue-300 transition-colors"
+                className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] border border-[color:var(--color-grey-300)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] disabled:opacity-40 transition-colors"
               >
                 ← Anterior
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:border-blue-300 transition-colors"
+                className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] border border-[color:var(--color-grey-300)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] disabled:opacity-40 transition-colors"
               >
                 Siguiente →
               </button>
@@ -222,7 +239,7 @@ export function FaceDatabasePage({ collections }: { collections: Collection[] })
         )}
       </div>
 
-      <p className="text-xs text-gray-300 mt-4 text-center">
+      <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-400)] mt-4 text-center">
         Los Face IDs son identificadores de Amazon Rekognition — no se almacenan imágenes de rostros.
       </p>
     </div>
