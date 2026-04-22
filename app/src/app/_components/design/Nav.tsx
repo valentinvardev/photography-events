@@ -66,7 +66,7 @@ export function Nav() {
             {...link}
             className={`hidden md:inline-block link-draw font-mono text-[11px] uppercase tracking-[0.22em] transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}
           >
-            Eventos
+            Buscá tu foto
           </Link>
           <a
             href="https://wa.me/5493515551234"
@@ -100,7 +100,7 @@ export function Nav() {
               href="#eventos"
               className="font-mono text-[11px] uppercase tracking-[0.22em]"
             >
-              Eventos
+              Buscá tu foto
             </Link>
             <MobileNav />
           </div>

@@ -91,17 +91,17 @@ export default async function HomePage() {
             <Reveal>
               <h2 className="font-display italic font-light leading-[0.92] tracking-[-0.04em]"
                   style={{ fontSize: "clamp(56px, 11vw, 180px)" }}>
-                Tu número,<br />
-                <span className="text-[color:var(--color-grey-500)]">tu&nbsp;</span>
-                <span className="not-italic font-display">foto.</span>
+                Tu momento,<br />
+                <span className="not-italic font-display text-[color:var(--color-grey-500)]">tu foto.</span>
               </h2>
             </Reveal>
 
             <Reveal delay={0.1}>
-              <p className="mt-8 max-w-lg font-sans text-[16px] leading-[1.6] text-[color:var(--color-paper)]/75">
-                Ingresá a un evento y buscá por número de dorsal o subí una selfie para encontrar tus fotos con reconocimiento facial.
-                Pagás solo si encontrás las que te gustan.
-              </p>
+              <div className="mt-8 max-w-lg font-sans text-[16px] leading-[1.8] text-[color:var(--color-paper)]/75 flex flex-col gap-1">
+                <p>Entrá a tu evento y encontrá tus fotos en segundos.</p>
+                <p>Buscá por número o subiendo una selfie.</p>
+                <p>Pagás solo si te gustan.</p>
+              </div>
             </Reveal>
 
             <Reveal delay={0.18}>
@@ -147,6 +147,71 @@ export default async function HomePage() {
               <span className="text-[color:var(--color-grey-500)]">Tarjeta, transferencia o efectivo.</span>
             </p>
           </Reveal>
+        </div>
+      </section>
+
+      {/* ════════ QUIÉN SOY ════════ */}
+      <section id="quien-soy" className="px-6 md:px-10 py-32 bg-[color:var(--color-paper)]">
+        <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 items-start">
+          <Reveal as="p" className="col-span-12 md:col-span-3 eyebrow">
+            (03) — Quién soy
+          </Reveal>
+
+          <div className="col-span-12 md:col-span-8 md:col-start-4">
+            <Reveal>
+              <h2 className="font-display italic font-light leading-[0.92] tracking-[-0.04em]"
+                  style={{ fontSize: "clamp(40px, 7vw, 110px)" }}>
+                El superpoder<br />
+                <span className="text-[color:var(--color-grey-500)]">de congelar el tiempo.</span>
+              </h2>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
+                  <p className="font-display italic text-[20px] leading-[1.4] text-[color:var(--color-ink)]">
+                    Mientras caminábamos al colegio, mi hijo me preguntó:<br />
+                    <span className="text-[color:var(--color-grey-500)]">—Mami, ¿qué es lo que más te gusta de ser fotógrafa?</span>
+                  </p>
+                  <p>Mi respuesta salió simple.</p>
+                  <p>
+                    Que tengo un superpoder.<br />
+                    El de congelar el tiempo.<br />
+                    El de hacer eterno lo efímero.<br />
+                    El de encontrar, en cada click, una forma de vencer al olvido.
+                  </p>
+                  <p>
+                    Porque la vida no se detiene.<br />
+                    El instante se escapa.<br />
+                    El cuerpo cambia, los hijos crecen, la luz se apaga.
+                  </p>
+                  <p className="font-display italic text-[18px] text-[color:var(--color-ink)]">
+                    Pero ahí está la foto, latiendo todavía.
+                  </p>
+                </div>
+
+                <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
+                  <p>
+                    Hace más de 20 años que la cámara es una extensión de mi cuerpo.
+                    Durante años estuve dedicada a la fotografía deportiva en el fútbol, donde aprendí a anticipar,
+                    a leer lo que va a pasar y a no fallar en el momento clave.
+                  </p>
+                  <p>
+                    Hoy trabajo en deportes, institucionales y eventos sociales, con el mismo criterio:
+                    conseguir las fotos que realmente importan.
+                  </p>
+                  <p>
+                    Por eso este espacio existe. Para que, entre todo lo que pasa, puedas encontrarte.
+                    Y quedarte con eso.
+                  </p>
+                  <p>
+                    Y también para que quienes necesitan que su evento, su marca o su historia esté bien contada,
+                    tengan a quién llamar. Con intención. Con criterio. Con imágenes que realmente funcionen.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 

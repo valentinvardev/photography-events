@@ -121,6 +121,7 @@ export default function PrivacidadPage() {
             <strong>no de los usuarios</strong>.
           </li>
           <li>El consentimiento puede retirarse dejando de usar la función.</li>
+          <li>La imagen utilizada para la búsqueda no se reutiliza, almacena ni vincula a perfiles de usuario.</li>
         </ul>
       </LegalSection>
 
@@ -138,7 +139,8 @@ export default function PrivacidadPage() {
         <p>
           Las transferencias internacionales se realizan bajo cláusulas contractuales estándar o hacia
           países con nivel adecuado de protección. <strong>No vendemos ni cedemos datos personales</strong>{" "}
-          a terceros con fines comerciales.
+          a terceros con fines comerciales. No utilizamos los datos personales para fines publicitarios
+          ni de perfilado comercial.
         </p>
       </LegalSection>
 
@@ -152,6 +154,10 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Imagen facial:</strong> no se almacena; se procesa en tiempo real y se descarta.
+          </li>
+          <li>
+            <strong>Fotografías:</strong> Las fotografías podrán permanecer disponibles en la
+            plataforma por tiempo limitado según cada evento.
           </li>
         </ul>
       </LegalSection>
@@ -218,6 +224,11 @@ export default function PrivacidadPage() {
           El servicio no está dirigido a menores de <strong>13 años</strong>. Si tomamos conocimiento de
           haber recolectado datos de un menor sin consentimiento de su representante legal, los
           eliminaremos.
+        </p>
+        <p>
+          Las imágenes pueden incluir menores de edad en el contexto de eventos públicos o privados.
+          El tratamiento de dichas imágenes se realiza conforme a la normativa vigente y bajo
+          responsabilidad de los organizadores del evento.
         </p>
       </LegalSection>
 

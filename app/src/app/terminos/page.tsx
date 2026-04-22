@@ -26,9 +26,8 @@ export default function TerminosPage() {
       <LegalSection index="01" title="Aceptación de las condiciones">
         <p>
           Al acceder y utilizar la plataforma de Ivana Maritano (en adelante, &ldquo;el Servicio&rdquo;),
-          operada por <strong>Ivana Maritano</strong> (en adelante, &ldquo;la Estudio&rdquo;), aceptás
-          quedar vinculado por las presentes Condiciones de Servicio. Si no estás de acuerdo con alguna,
-          no utilices el Servicio.
+          operada por <strong>Ivana Maritano</strong>, aceptás quedar vinculado por las presentes
+          Condiciones de Servicio. Si no estás de acuerdo con alguna, no utilices el Servicio.
         </p>
         <p>
           El uso del Servicio implica la aceptación plena de estas condiciones, así como de la{" "}
@@ -41,11 +40,11 @@ export default function TerminosPage() {
 
       <LegalSection index="02" title="Descripción del Servicio">
         <p>
-          El estudio Ivana Maritano es una plataforma de fotografía deportiva profesional que permite a
+          Ivana Maritano es una plataforma de fotografía de eventos profesional que permite a
           los usuarios:
         </p>
         <ul>
-          <li>Buscar y visualizar fotografías tomadas en eventos deportivos.</li>
+          <li>Buscar y visualizar fotografías tomadas en eventos.</li>
           <li>Adquirir fotografías digitales en alta resolución.</li>
           <li>Utilizar reconocimiento facial para encontrar fotografías propias.</li>
           <li>Descargar las fotografías adquiridas en formato digital.</li>
@@ -59,7 +58,7 @@ export default function TerminosPage() {
       <LegalSection index="03" title="Registro y cuenta de usuario">
         <p>
           Algunas funciones pueden requerir crear una cuenta. El usuario es responsable de mantener la
-          confidencialidad de sus credenciales y de la actividad que ocurra bajo su cuenta. La Estudio
+          confidencialidad de sus credenciales y de la actividad que ocurra bajo su cuenta. Ivana Maritano
           no será responsable por pérdidas derivadas del uso no autorizado de la cuenta.
         </p>
         <p>El usuario se compromete a proporcionar información veraz y actualizada al registrarse.</p>
@@ -99,8 +98,8 @@ export default function TerminosPage() {
           términos de MercadoPago.
         </p>
         <p>
-          La Estudio se reserva el derecho de modificar los precios en cualquier momento, sin afectar
-          las compras ya realizadas y confirmadas.
+          Ivana Maritano se reserva el derecho de modificar los precios en cualquier momento, sin
+          afectar las compras ya realizadas y confirmadas.
         </p>
       </LegalSection>
 
@@ -129,14 +128,34 @@ export default function TerminosPage() {
         </LegalCallout>
       </LegalSection>
 
-      <LegalSection index="07" title="Reconocimiento facial">
+      <LegalSection index="07" title="Descarga y disponibilidad">
+        <p>
+          Una vez confirmado el pago, el usuario recibirá un enlace de descarga al correo electrónico
+          proporcionado. Este enlace permite acceder a las fotografías adquiridas en alta resolución,
+          sin marca de agua.
+        </p>
+        <p>
+          La disponibilidad de descarga podrá estar sujeta a plazos determinados por la plataforma.
+          Recomendamos descargar y guardar las fotografías adquiridas dentro de un tiempo prudencial
+          desde la confirmación del pago.
+        </p>
+        <p>
+          Ivana Maritano no garantiza la disponibilidad indefinida de los archivos en la plataforma
+          una vez transcurrido el plazo vigente para cada evento o álbum.
+        </p>
+      </LegalSection>
+
+      <LegalSection index="08" title="Reconocimiento facial">
         <p>
           La plataforma ofrece de manera opcional la búsqueda por reconocimiento facial a partir de una
           imagen (selfie) aportada voluntariamente. Esta funcionalidad:
         </p>
         <ul>
           <li>Es de uso estrictamente <strong>voluntario</strong>.</li>
-          <li>Procesa la imagen únicamente para la búsqueda solicitada, sin almacenar el rostro.</li>
+          <li>
+            Procesa la imagen únicamente para la búsqueda solicitada, sin almacenar el rostro.
+            La imagen no se utiliza para ningún otro fin ni se comparte con terceros.
+          </li>
           <li>Utiliza Amazon Web Services (AWS Rekognition) bajo sus condiciones de privacidad.</li>
         </ul>
         <p>
@@ -149,7 +168,26 @@ export default function TerminosPage() {
         </p>
       </LegalSection>
 
-      <LegalSection index="08" title="Conducta del usuario">
+      <LegalSection index="09" title="Derechos de imagen">
+        <p>
+          Las fotografías son tomadas en eventos públicos o privados con autorización de los
+          organizadores. Al participar en dichos eventos, los asistentes aceptan la posibilidad de ser
+          fotografiados.
+        </p>
+        <p>
+          Todas las fotografías disponibles en la plataforma han sido tomadas en el contexto de dichos
+          eventos. Ivana Maritano actúa como fotógrafa acreditada y no requiere autorización individual
+          de cada persona retratada en el marco de eventos públicos o privados con acceso autorizado,
+          conforme a la normativa argentina vigente.
+        </p>
+        <p>
+          Si considerás que una fotografía vulnera tus derechos de imagen, podés solicitarnos su
+          revisión escribiendo a{" "}
+          <a href="mailto:hola@ivanamaritano.com.ar">hola@ivanamaritano.com.ar</a>.
+        </p>
+      </LegalSection>
+
+      <LegalSection index="10" title="Conducta del usuario">
         <p>El usuario se compromete a no utilizar el Servicio para:</p>
         <ul>
           <li>Actividades ilegales o contrarias a la moral y las buenas costumbres.</li>
@@ -159,11 +197,11 @@ export default function TerminosPage() {
         </ul>
       </LegalSection>
 
-      <LegalSection index="09" title="Limitación de responsabilidad">
+      <LegalSection index="11" title="Limitación de responsabilidad">
         <p>
-          La Estudio no será responsable por daños indirectos, incidentales, especiales o consecuentes
-          derivados del uso o imposibilidad de uso del Servicio, incluidos pérdida de datos o lucro
-          cesante.
+          Ivana Maritano no será responsable por daños indirectos, incidentales, especiales o
+          consecuentes derivados del uso o imposibilidad de uso del Servicio, incluidos pérdida de
+          datos o lucro cesante.
         </p>
         <p>
           Las fotografías se entregan en el estado en que fueron capturadas. No se garantiza que todas
@@ -171,15 +209,15 @@ export default function TerminosPage() {
         </p>
       </LegalSection>
 
-      <LegalSection index="10" title="Modificaciones del servicio y las condiciones">
+      <LegalSection index="12" title="Modificaciones del servicio y las condiciones">
         <p>
-          La Estudio se reserva el derecho de modificar, suspender o discontinuar el Servicio en
+          Ivana Maritano se reserva el derecho de modificar, suspender o discontinuar el Servicio en
           cualquier momento, con o sin previo aviso. También podrá actualizar estas Condiciones
           periódicamente. El uso continuado tras la publicación de cambios implica aceptación.
         </p>
       </LegalSection>
 
-      <LegalSection index="11" title="Ley aplicable y jurisdicción">
+      <LegalSection index="13" title="Ley aplicable y jurisdicción">
         <p>
           Las presentes Condiciones se rigen por las leyes de la <strong>República Argentina</strong>.
           Cualquier controversia será sometida a la jurisdicción de los Tribunales Ordinarios de la
@@ -192,7 +230,7 @@ export default function TerminosPage() {
         </p>
       </LegalSection>
 
-      <LegalSection index="12" title="Contacto">
+      <LegalSection index="14" title="Contacto">
         <p>
           Para consultas relacionadas con estas Condiciones:{" "}
           <a href="mailto:hola@ivanamaritano.com.ar">hola@ivanamaritano.com.ar</a>

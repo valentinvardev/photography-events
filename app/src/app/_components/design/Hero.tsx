@@ -132,16 +132,11 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
         {/* the headline */}
         <h1 className="font-display italic font-light leading-[0.86] tracking-[-0.04em]"
             style={{ fontSize: "clamp(60px, 14vw, 220px)" }}>
-          <SplitWord word="Cada" delay={0.85} />
+          <SplitWord word="No son sólo fotos." delay={0.85} />
           <br />
-          <SplitWord word="momento," delay={1.0} />
+          <SplitWord word="Son recuerdos" delay={1.0} />
           <br />
-          <SplitWord word="" delay={1.15} extra={
-            <span className="inline-block">
-              <em className="not-italic font-display font-normal">una</em>{" "}
-              <span className="font-display italic">imagen.</span>
-            </span>
-          } />
+          <SplitWord word="que vuelven." delay={1.15} />
         </h1>
 
         <motion.div

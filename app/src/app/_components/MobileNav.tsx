@@ -6,9 +6,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { WhatsAppMobileItem } from "~/app/_components/WhatsAppModal";
 
 const ITEMS = [
-  { label: "Inicio", href: "/", index: "01" },
-  { label: "Eventos", href: "/#eventos", index: "02" },
-  { label: "Manifiesto", href: "/#manifiesto", index: "03" },
+  { label: "Eventos", href: "/#eventos", index: "01" },
+  { label: "Quién soy", href: "/#quien-soy", index: "02" },
 ];
 
 export function MobileNav() {
@@ -131,7 +130,7 @@ export function MobileNav() {
                 <span className="font-mono text-[11px] tracking-[0.22em] transition-transform group-hover:translate-x-1">→</span>
               </Link>
               <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/40">
-                © 2026 Ivana Maritano · Fotografía deportiva
+                © 2026 Ivana Maritano · Fotografía de eventos
               </p>
             </div>
           </motion.aside>
