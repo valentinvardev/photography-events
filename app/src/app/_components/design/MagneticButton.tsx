@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, useMotionValue, useSpring } from "motion/react";
 import Link from "next/link";
 import { useRef, type ReactNode } from "react";
 import { useCursorTrigger } from "./Cursor";
@@ -25,23 +24,18 @@ export function MagneticButton({
   size = "md",
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 220, damping: 18 });
-  const sy = useSpring(y, { stiffness: 220, damping: 18 });
   const cursor = useCursorTrigger("cta", cursorLabel);
 
   const handleMove = (e: React.MouseEvent) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    x.set((e.clientX - cx) * 0.25);
-    y.set((e.clientY - cy) * 0.35);
+    const dx = (e.clientX - rect.left - rect.width / 2) * 0.25;
+    const dy = (e.clientY - rect.top - rect.height / 2) * 0.35;
+    ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
   };
+
   const reset = () => {
-    x.set(0);
-    y.set(0);
+    if (ref.current) ref.current.style.transform = "";
     cursor.onMouseLeave();
   };
 
@@ -60,12 +54,12 @@ export function MagneticButton({
   } as const;
 
   const inner = (
-    <motion.div
+    <div
       ref={ref}
       onMouseMove={handleMove}
       onMouseLeave={reset}
       onMouseEnter={cursor.onMouseEnter}
-      style={{ x: sx, y: sy }}
+      style={{ transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)" }}
       className={`group relative inline-flex items-center gap-3 font-mono uppercase tracking-[0.2em] transition-colors duration-300 ${sizes[size]} ${variants[variant]} ${className}`}
     >
       <span className="relative inline-flex items-center gap-3">
@@ -74,7 +68,7 @@ export function MagneticButton({
           ↗
         </span>
       </span>
-    </motion.div>
+    </div>
   );
 
   if (href) {

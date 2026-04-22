@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 
 export function Hero({ collectionsCount }: { collectionsCount: number }) {
-  const ease = [0.16, 1, 0.3, 1] as const;
+  const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
   return (
     <section
@@ -14,9 +14,9 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
       {/* static photographic backdrop */}
       <div className="absolute inset-0">
         <motion.div
-          initial={{ clipPath: "inset(8% 8% 8% 8%)" }}
+          initial={{ clipPath: "inset(6% 6% 6% 6%)" }}
           animate={{ clipPath: "inset(0% 0% 0% 0%)" }}
-          transition={{ duration: 2.4, ease, delay: 0.1 }}
+          transition={{ duration: 1.2, ease, delay: 0 }}
           className="absolute inset-[-3%] overflow-hidden"
         >
           <Image
@@ -41,37 +41,32 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
         <span className="absolute bottom-0 right-0 w-6 h-6 border-r border-b border-[color:var(--color-paper)]/60" />
       </div>
 
-      {/* center wordmark — static position, text only animates */}
+      {/* center wordmark */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center pt-16">
         <motion.span
-          initial={{ opacity: 0, letterSpacing: "0.4em" }}
-          animate={{ opacity: 1, letterSpacing: "0.22em" }}
-          transition={{ duration: 1.6, ease, delay: 0.6 }}
-          className="font-mono text-[10px] uppercase text-[color:var(--color-paper)]/70 mb-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, ease, delay: 0.05 }}
+          className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/70 mb-5"
         >
           Ivana Maritano · Fotografía
         </motion.span>
 
         <h1 className="font-display italic font-light leading-[0.86] tracking-[-0.04em]"
             style={{ fontSize: "clamp(60px, 14vw, 220px)" }}>
-          <SplitWord word="No son sólo fotos." delay={0.85} />
+          <SplitWord word="No son sólo fotos." delay={0.12} ease={ease} />
           <br />
-          <SplitWord word="Son recuerdos" delay={1.0} />
+          <SplitWord word="Son recuerdos" delay={0.22} ease={ease} />
           <br />
-          <SplitWord word="que vuelven." delay={1.15} />
+          <SplitWord word="que vuelven." delay={0.32} ease={ease} />
         </h1>
 
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 1.4, ease, delay: 1.6 }}
-          className="mt-10 h-px w-32 bg-[color:var(--color-paper)] origin-left"
-        />
+        <div className="mt-10 h-px w-32 bg-[color:var(--color-paper)] opacity-60" />
 
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease, delay: 1.9 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, ease, delay: 0.6 }}
           className="mt-10 flex flex-col items-center gap-2"
         >
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 flex flex-col items-center gap-2">
@@ -87,7 +82,7 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 1, ease, delay: 2.2 }}
+        transition={{ duration: 0.5, ease, delay: 0.4 }}
         className="absolute bottom-16 md:bottom-20 inset-x-0 flex items-end justify-between px-6 md:px-10"
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/70">
@@ -101,14 +96,13 @@ export function Hero({ collectionsCount }: { collectionsCount: number }) {
   );
 }
 
-function SplitWord({ word, delay }: { word: string; delay: number }) {
-  const ease = [0.16, 1, 0.3, 1] as const;
+function SplitWord({ word, delay, ease }: { word: string; delay: number; ease: [number, number, number, number] }) {
   return (
     <span className="inline-block overflow-hidden align-bottom pb-[0.22em] mb-[-0.22em]">
       <motion.span
         initial={{ y: "100%" }}
         animate={{ y: "0%" }}
-        transition={{ duration: 1.1, ease, delay }}
+        transition={{ duration: 0.7, ease, delay }}
         className="inline-block"
       >
         {word}

@@ -112,13 +112,13 @@ export function Cursor() {
       className="cursor-root"
       style={{ x: sx, y: sy, opacity: variant === "hidden" ? 0 : 1 }}
     >
-      {/* default — dot */}
+      {/* default — dot: visible only in default, hides on view/cta */}
       <motion.span
         animate={{
           scale: variant === "default" ? 1 : 0,
           opacity: variant === "default" ? 1 : 0,
         }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         style={{
           position: "absolute",
           left: -4,
@@ -132,15 +132,15 @@ export function Cursor() {
         }}
       />
 
-      {/* view — sniper crosshair */}
+      {/* view — sniper crosshair: subtle in default, full in view */}
       <motion.svg
         width="56"
         height="56"
         viewBox="0 0 56 56"
         animate={{
-          scale: variant === "view" ? 1 : 0.4,
-          opacity: variant === "view" ? 1 : 0,
-          rotate: variant === "view" ? 0 : 45,
+          scale: variant === "view" ? 1 : variant === "default" ? 0.65 : 0.4,
+          opacity: variant === "view" ? 1 : variant === "default" ? 0.5 : 0,
+          rotate: 0,
         }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         style={{ position: "absolute", left: -28, top: -28, display: "block", overflow: "visible" }}

@@ -7,7 +7,6 @@ type Props = {
   children: ReactNode;
   delay?: number;
   className?: string;
-  /** "lift" = translate-up + fade. "develop" = clip-path photo reveal. "split" = vertical split. */
   variant?: "lift" | "develop" | "split";
   as?: "div" | "span" | "li" | "h1" | "h2" | "h3" | "p" | "section" | "article";
 };
@@ -30,13 +29,9 @@ export function Reveal({
       <Tag
         ref={ref}
         className={className}
-        initial={{ clipPath: "inset(0 100% 0 0)", filter: "contrast(0.4) brightness(1.4) sepia(0.3)" }}
-        animate={
-          inView
-            ? { clipPath: "inset(0 0% 0 0)", filter: "contrast(1) brightness(1) sepia(0)" }
-            : undefined
-        }
-        transition={{ duration: 1.6, delay, ease }}
+        initial={{ clipPath: "inset(0 100% 0 0)" }}
+        animate={inView ? { clipPath: "inset(0 0% 0 0)" } : undefined}
+        transition={{ duration: 0.9, delay, ease }}
       >
         {children}
       </Tag>
@@ -50,7 +45,7 @@ export function Reveal({
         className={className}
         initial={{ clipPath: "inset(50% 0 50% 0)", opacity: 0 }}
         animate={inView ? { clipPath: "inset(0 0 0 0)", opacity: 1 } : undefined}
-        transition={{ duration: 1.1, delay, ease }}
+        transition={{ duration: 0.75, delay, ease }}
       >
         {children}
       </Tag>
@@ -61,9 +56,9 @@ export function Reveal({
     <Tag
       ref={ref}
       className={className}
-      initial={{ y: 32, opacity: 0 }}
+      initial={{ y: 24, opacity: 0 }}
       animate={inView ? { y: 0, opacity: 1 } : undefined}
-      transition={{ duration: 0.9, delay, ease }}
+      transition={{ duration: 0.65, delay, ease }}
     >
       {children}
     </Tag>
