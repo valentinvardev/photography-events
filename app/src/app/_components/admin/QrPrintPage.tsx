@@ -4,6 +4,7 @@ import { useState } from "react";
 import QRCode from "react-qr-code";
 
 const SITE_URL = "https://altafoto.com.ar";
+const SHORT_URL = "altafoto.com.ar";
 
 type Format = "sticker" | "card" | "poster" | "plain";
 
@@ -13,13 +14,6 @@ const FORMATS: { id: Format; label: string; desc: string; size: string }[] = [
   { id: "poster",  label: "Póster",   desc: "A5 · cartel en el recorrido",      size: "A5 (14.8 × 21 cm)"  },
   { id: "plain",   label: "Solo QR",  desc: "QR limpio sin decoración",         size: "6cm × 6cm"          },
 ];
-
-const QR_PREVIEW_SIZES: Record<Format, number> = {
-  sticker: 90,
-  card:    130,
-  poster:  180,
-  plain:   130,
-};
 
 export function QrPrintPage() {
   const [format, setFormat] = useState<Format>("card");
@@ -77,60 +71,94 @@ export function QrPrintPage() {
             Vista previa · {fmt.label} · {fmt.size}
           </p>
 
-          {format === "plain" ? (
+          {/* PLAIN */}
+          {format === "plain" && (
             <div className="border border-[color:var(--color-grey-300)] p-8 flex flex-col items-center gap-4">
-              <div id="qr-svg-root">
-                <QRCode
-                  value={SITE_URL}
-                  size={QR_PREVIEW_SIZES.plain}
-                  fgColor="#000000"
-                  bgColor="#ffffff"
-                  style={{ display: "block" }}
-                />
-              </div>
+              <QRCode value={SITE_URL} size={130} fgColor="#0a0a0a" bgColor="#ffffff" style={{ display: "block" }} />
               <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-400)]">
                 Sin bordes · Sin texto · Solo QR
               </p>
             </div>
-          ) : (
-            <div
-              className="overflow-hidden shadow-md"
-              style={{ width: format === "poster" ? 260 : format === "card" ? 320 : 180 }}
-            >
-              {/* Card header — print artifact, keep brand colors */}
-              <div
-                className="flex flex-col items-center gap-2 py-5 px-4"
-                style={{ background: "linear-gradient(135deg, #003D7A 0%, #0057A8 100%)" }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo.png"
-                  alt="ALTAFOTO"
-                  className="w-auto brightness-0 invert"
-                  style={{ height: format === "poster" ? 52 : format === "card" ? 44 : 32 }}
-                />
+          )}
+
+          {/* STICKER */}
+          {format === "sticker" && (
+            <div style={{
+              width: 180, background: "#ffffff",
+              border: "1.5px solid #0a0a0a",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              padding: "16px 14px 12px", gap: 10,
+            }}>
+              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 300, fontSize: 14, color: "#0a0a0a", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                Ivana Maritano
+              </p>
+              <div style={{ width: "100%", height: 1, background: "#0a0a0a" }} />
+              <QRCode value={SITE_URL} size={108} fgColor="#0a0a0a" bgColor="#ffffff" style={{ display: "block" }} />
+              <div style={{ width: "100%", height: 1, background: "#0a0a0a" }} />
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#555", textAlign: "center" }}>
+                Buscá tus fotos
+              </p>
+            </div>
+          )}
+
+          {/* CARD */}
+          {format === "card" && (
+            <div style={{ width: 320, display: "flex", border: "1.5px solid #0a0a0a", overflow: "hidden" }}>
+              {/* Left: black panel */}
+              <div style={{
+                width: 112, background: "#0a0a0a",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "16px 12px", gap: 6,
+              }}>
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 300, fontSize: 18, color: "#f5f2ec", letterSpacing: "-0.02em", lineHeight: 1.05, textAlign: "center" }}>
+                  Ivana<br />Maritano
+                </p>
+                <div style={{ width: 28, height: 1, background: "#f5f2ec", opacity: 0.35 }} />
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: 6.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#f5f2ec", opacity: 0.5, textAlign: "center" }}>
+                  {SHORT_URL}
+                </p>
               </div>
+              {/* Right: white panel */}
+              <div style={{
+                flex: 1, background: "#ffffff",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "16px 14px", gap: 8,
+              }}>
+                <QRCode value={SITE_URL} size={118} fgColor="#0a0a0a" bgColor="#ffffff" style={{ display: "block" }} />
+                <div style={{ width: "100%", height: 1, background: "#e5e5e5" }} />
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 300, fontSize: 13, color: "#0a0a0a", textAlign: "center", lineHeight: 1.2 }}>
+                  ¿Corriste hoy?
+                </p>
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: 7, letterSpacing: "0.14em", textTransform: "uppercase", color: "#888", textAlign: "center" }}>
+                  Buscá tus fotos con tu número
+                </p>
+              </div>
+            </div>
+          )}
 
-              <div style={{ height: 4, background: "linear-gradient(90deg, #F97316, #c2410c)" }} />
-
-              <div className="flex flex-col items-center gap-3 py-5 px-4 bg-white">
-                {format === "poster" && (
-                  <p className="text-xs text-gray-500 text-center font-semibold">¿Corriste hoy? Buscá tus fotos</p>
-                )}
-                <div className="p-2.5 border-2" style={{ borderColor: "#0057A8" }}>
-                  <QRCode
-                    value={SITE_URL}
-                    size={QR_PREVIEW_SIZES[format]}
-                    fgColor="#0057A8"
-                    bgColor="#ffffff"
-                    style={{ display: "block" }}
-                  />
-                </div>
-                {format !== "sticker" && (
-                  <p className="text-xs text-center font-semibold" style={{ color: "#F97316" }}>
-                    ↑ Escaneá con tu celular
-                  </p>
-                )}
+          {/* POSTER */}
+          {format === "poster" && (
+            <div style={{ width: 240, background: "#ffffff", border: "1.5px solid #0a0a0a", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ background: "#0a0a0a", padding: "14px 18px 12px" }}>
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: 7, letterSpacing: "0.22em", textTransform: "uppercase", color: "#f5f2ec", opacity: 0.5, marginBottom: 4 }}>
+                  Fotografía de carrera
+                </p>
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 300, fontSize: 24, color: "#f5f2ec", letterSpacing: "-0.02em", lineHeight: 0.95 }}>
+                  Ivana<br />Maritano
+                </p>
+              </div>
+              {/* Body */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "18px 16px 16px", gap: 10 }}>
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 300, fontSize: 17, color: "#0a0a0a", textAlign: "center", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+                  ¿Corriste hoy?<br />Encontrá tus fotos.
+                </p>
+                <div style={{ width: 28, height: 1, background: "#0a0a0a" }} />
+                <QRCode value={SITE_URL} size={148} fgColor="#0a0a0a" bgColor="#ffffff" style={{ display: "block" }} />
+                <div style={{ width: "100%", height: 1, background: "#e5e5e5" }} />
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#888", textAlign: "center", lineHeight: 1.6 }}>
+                  Escaneá el código e ingresá<br />tu número de corredor
+                </p>
               </div>
             </div>
           )}
