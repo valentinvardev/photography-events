@@ -2,14 +2,16 @@ import { api } from "~/trpc/server";
 import Link from "next/link";
 
 export default async function AdminDashboard() {
-  const [collections, sales] = await Promise.all([
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [collections, purchaseStats, recentSales, analyticsStats] = await Promise.all([
     api.collection.adminList(),
+    api.purchase.adminStats({}),
     api.purchase.adminList({ page: 1, limit: 8 }),
+    api.analytics.adminStats({ since: since24h }),
   ]);
 
   const totalPhotos = collections.reduce((acc, c) => acc + c._count.photos, 0);
-  const approvedSales = sales.items.filter((s) => s.status === "APPROVED");
-  const totalRevenue = approvedSales.reduce((acc, s) => acc + Number(s.amountPaid), 0);
   const publishedCollections = collections.filter((c) => c.isPublished).length;
 
   return (
@@ -24,12 +26,20 @@ export default async function AdminDashboard() {
         </h1>
       </div>
 
-      {/* Stat grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-10">
+      {/* Main stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
         <StatCard label="Eventos publicados" value={publishedCollections} sub={`de ${collections.length} total`} />
-        <StatCard label="Fotos totales" value={totalPhotos} />
-        <StatCard label="Ventas aprobadas" value={approvedSales.length} sub={`de ${sales.total} total`} />
-        <StatCard label="Ingresos" value={`$${totalRevenue.toLocaleString("es-AR")}`} isText />
+        <StatCard label="Fotos totales" value={totalPhotos.toLocaleString("es-AR")} isText />
+        <StatCard label="Ventas aprobadas" value={purchaseStats.approved} sub={`de ${purchaseStats.total} total`} />
+        <StatCard label="Ingresos" value={`$${purchaseStats.revenue.toLocaleString("es-AR")}`} isText />
+      </div>
+
+      {/* Analytics — last 24h */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border-x border-b border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-10">
+        <StatCard label="Visitas" value={analyticsStats.visits} sub="últimas 24h" dim />
+        <StatCard label="Búsquedas dorsal" value={analyticsStats.searchBib} sub="últimas 24h" dim />
+        <StatCard label="Búsquedas selfie" value={analyticsStats.searchFace} sub="últimas 24h" dim />
+        <StatCard label="Agregados al carrito" value={analyticsStats.cartAdds} sub="últimas 24h" dim />
       </div>
 
       {/* Quick actions */}
@@ -41,7 +51,7 @@ export default async function AdminDashboard() {
           {[
             { href: "/admin/colecciones/nueva", label: "Nuevo evento", icon: "+" },
             { href: "/admin/colecciones", label: `Gestionar eventos (${collections.length})`, icon: "◫" },
-            { href: "/admin/ventas", label: `Ver ventas (${sales.total})`, icon: "◈" },
+            { href: "/admin/ventas", label: `Ver ventas (${purchaseStats.total})`, icon: "◈" },
           ].map((item) => (
             <Link
               key={item.href}
@@ -77,7 +87,7 @@ export default async function AdminDashboard() {
         </div>
 
         <div className="border border-[color:var(--color-grey-300)]">
-          {sales.items.length === 0 ? (
+          {recentSales.items.length === 0 ? (
             <div className="py-16 text-center">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                 Sin ventas registradas
@@ -95,11 +105,11 @@ export default async function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {sales.items.map((sale, i) => (
+                {recentSales.items.map((sale, i) => (
                   <tr
                     key={sale.id}
                     className={`border-b border-[color:var(--color-grey-100)] hover:bg-[color:var(--color-grey-100)] transition-colors ${
-                      i === sales.items.length - 1 ? "border-0" : ""
+                      i === recentSales.items.length - 1 ? "border-0" : ""
                     }`}
                   >
                     <td className="px-5 py-4 font-sans text-[13px] text-[color:var(--color-grey-700)]">
@@ -130,22 +140,24 @@ function StatCard({
   value,
   sub,
   isText,
+  dim,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   isText?: boolean;
+  dim?: boolean;
 }) {
   return (
     <div className="bg-[color:var(--color-paper)] px-5 py-5">
       <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-4">
         {label}
       </p>
-      <p className={`font-display italic font-light leading-none text-[color:var(--color-ink)] ${isText ? "text-[32px]" : "text-[48px]"}`}>
+      <p className={`font-display italic font-light leading-none ${dim ? "text-[color:var(--color-grey-500)]" : "text-[color:var(--color-ink)]"} ${isText || dim ? "text-[32px]" : "text-[48px]"}`}>
         {value}
       </p>
       {sub && (
-        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mt-2">
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-400)] mt-2">
           {sub}
         </p>
       )}

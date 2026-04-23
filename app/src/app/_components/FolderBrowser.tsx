@@ -203,6 +203,16 @@ const SectionLabel = memo(function SectionLabel({ label }: { index?: string; lab
   );
 });
 
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+function trackEvent(type: string, collectionId: string) {
+  void fetch("/api/analytics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, collectionId }),
+  }).catch(() => null);
+}
+
 // ─── Main FolderBrowser ───────────────────────────────────────────────────────
 
 export function FolderBrowser({
@@ -235,6 +245,20 @@ export function FolderBrowser({
   // Stable ref for cartItems so the checkout listener never needs to re-subscribe
   const cartItemsRef = useRef(cartItems);
   useEffect(() => { cartItemsRef.current = cartItems; }, [cartItems]);
+
+  // Stable cart-set ref for add-vs-remove detection without deps churn
+  const cartSetRef = useRef(new Set<string>());
+  useEffect(() => {
+    cartSetRef.current = new Set(cartItems.map((i) => i.photoId));
+  }, [cartItems]);
+
+  // Track page visit on mount
+  useEffect(() => { trackEvent("VISIT", collectionId); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track bib searches
+  useEffect(() => {
+    if (debouncedSearch.length > 0) trackEvent("SEARCH_BIB", collectionId);
+  }, [debouncedSearch, collectionId]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 280);
@@ -347,9 +371,11 @@ export function FolderBrowser({
 
   const handleToggleCart = useCallback(
     (photoId: string, bibNumber: string | null, url: string, price: number) => {
+      const adding = !cartSetRef.current.has(photoId);
       toggleCart({ photoId, bibNumber, url, price });
+      if (adding) trackEvent("CART_ADD", collectionId);
     },
-    [toggleCart],
+    [toggleCart, collectionId],
   );
 
   const cartCheckout = useCallback(() => {
@@ -424,6 +450,7 @@ export function FolderBrowser({
       setFaceBibs(json.groups);
       setFaceStatus("done");
       setFaceActive(true);
+      trackEvent("SEARCH_FACE", collectionId);
     } catch (err) {
       console.error("[face-search] upload error:", err);
       setFaceStatus("error");

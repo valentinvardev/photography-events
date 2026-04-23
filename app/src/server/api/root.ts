@@ -4,6 +4,7 @@ import { photoRouter } from "~/server/api/routers/photo";
 import { purchaseRouter } from "~/server/api/routers/purchase";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { faceRouter } from "~/server/api/routers/face";
+import { analyticsRouter } from "~/server/api/routers/analytics";
 
 export const appRouter = createTRPCRouter({
   collection: collectionRouter,
@@ -11,6 +12,7 @@ export const appRouter = createTRPCRouter({
   purchase: purchaseRouter,
   settings: settingsRouter,
   face: faceRouter,
+  analytics: analyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;

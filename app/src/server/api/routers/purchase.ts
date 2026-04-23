@@ -222,18 +222,44 @@ export const purchaseRouter = createTRPCRouter({
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
 
+  adminStats: protectedProcedure
+    .input(z.object({ since: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const baseWhere = {
+        buyerEmail: { not: "public@system" },
+        ...(input.since ? { createdAt: { gte: new Date(input.since) } } : {}),
+      };
+      const [total, approved, pending, revenue] = await Promise.all([
+        ctx.db.purchase.count({ where: baseWhere }),
+        ctx.db.purchase.count({ where: { ...baseWhere, status: "APPROVED" } }),
+        ctx.db.purchase.count({ where: { ...baseWhere, status: "PENDING" } }),
+        ctx.db.purchase.aggregate({
+          where: { ...baseWhere, status: "APPROVED" },
+          _sum: { amountPaid: true },
+        }),
+      ]);
+      return {
+        total,
+        approved,
+        pending,
+        revenue: Number(revenue._sum.amountPaid ?? 0),
+      };
+    }),
+
   adminList: protectedProcedure
     .input(
       z.object({
         page: z.number().default(1),
         limit: z.number().default(20),
         status: z.enum(["PENDING", "APPROVED", "REJECTED", "REFUNDED"]).optional(),
+        since: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const where = {
         buyerEmail: { not: "public@system" },
         ...(input.status ? { status: input.status } : {}),
+        ...(input.since ? { createdAt: { gte: new Date(input.since) } } : {}),
       };
       const [items, total] = await Promise.all([
         ctx.db.purchase.findMany({

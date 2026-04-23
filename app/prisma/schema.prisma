@@ -200,6 +200,19 @@ model FaceRecord {
     @@index([photoId])
 }
 
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+model AnalyticsEvent {
+    id           String   @id @default(cuid())
+    type         String   // VISIT | SEARCH_BIB | SEARCH_FACE | CART_ADD
+    collectionId String?
+    createdAt    DateTime @default(now())
+
+    @@index([type, createdAt])
+    @@index([collectionId, createdAt])
+    @@index([createdAt])
+}
+
 // ─── Platform Settings ───────────────────────────────────────────────────────
 
 // Key-value store for platform-wide config (e.g. global watermark, contact info)
