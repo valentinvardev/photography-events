@@ -13,7 +13,7 @@ import {
 import { db } from "~/server/db";
 import { getAdminClient } from "~/lib/supabase/admin";
 import { WATERMARK_KEY } from "~/lib/watermark";
-import { getS3ObjectBytes, putS3Object, deleteS3Objects, isS3Key } from "~/lib/s3";
+import { getS3ObjectBytes, putS3Object, deleteS3Objects, isS3Key, s3Key } from "~/lib/s3";
 
 // ── Storage backend helpers ───────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
       }
     }
 
-    const previewKey = `previews/${photo.id}.jpg`;
+    const previewKey = s3Key(`previews/${photo.id}.jpg`);
 
     if (useS3) {
       await putS3Object(previewKey, watermarked, "image/jpeg");

@@ -6,6 +6,7 @@ import {
   createS3DownloadUrl,
   deleteS3Objects,
   isS3Key,
+  s3Key,
 } from "~/lib/s3";
 import { isVideoMimeType } from "~/lib/video-utils";
 import {
@@ -150,7 +151,7 @@ export const photoRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const ext = path.extname(input.filename).toLowerCase() || ".jpg";
-      const key = `uploads/${input.collectionId}/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      const key = s3Key(`uploads/${input.collectionId}/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
       const url = await createS3UploadUrl(key, input.contentType);
       return { uploadUrl: url, key };
     }),

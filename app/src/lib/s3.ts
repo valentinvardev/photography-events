@@ -16,6 +16,16 @@ const s3 = new S3Client({
 
 export const S3_BUCKET = process.env.AWS_S3_BUCKET ?? "mediaseller-photos";
 
+/** Prefijo de carpeta dentro del bucket, e.g. "ivana/" para separar clientes. */
+export const S3_PREFIX = process.env.AWS_S3_PREFIX
+  ? process.env.AWS_S3_PREFIX.replace(/\/?$/, "/")
+  : "";
+
+/** Construye una key S3 aplicando el prefijo configurado. */
+export function s3Key(path: string): string {
+  return `${S3_PREFIX}${path}`;
+}
+
 /** Genera una URL firmada para que el browser suba directamente a S3 (PUT). */
 export async function createS3UploadUrl(
   key: string,
@@ -79,5 +89,10 @@ export async function deleteS3Objects(keys: string[]): Promise<void> {
 
 /** Determina si una storageKey apunta a S3 (en lugar de Supabase). */
 export function isS3Key(storageKey: string): boolean {
-  return storageKey.startsWith("uploads/") || storageKey.startsWith("previews/");
+  return (
+    storageKey.startsWith(`${S3_PREFIX}uploads/`) ||
+    storageKey.startsWith(`${S3_PREFIX}previews/`) ||
+    storageKey.startsWith("uploads/") ||
+    storageKey.startsWith("previews/")
+  );
 }

@@ -9,7 +9,7 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import { db } from "~/server/db";
 import { getAdminClient } from "~/lib/supabase/admin";
-import { getS3ObjectBytes, putS3Object, deleteS3Objects, isS3Key } from "~/lib/s3";
+import { getS3ObjectBytes, putS3Object, deleteS3Objects, isS3Key, s3Key } from "~/lib/s3";
 import { WATERMARK_KEY } from "~/lib/watermark";
 
 if (ffmpegStatic) ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -108,7 +108,7 @@ export async function runVideoWatermark(photoId: string): Promise<{ previewKey: 
       }
     }
 
-    const previewKey = `previews/${photo.id}.mp4`;
+    const previewKey = s3Key(`previews/${photo.id}.mp4`);
     await putS3Object(previewKey, fs.readFileSync(tmpOut), "video/mp4");
     await db.photo.update({ where: { id: photoId }, data: { previewKey } });
 
