@@ -1,7 +1,11 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore -- ffmpeg packages are runtime-only, not bundled by webpack
 import ffmpeg from "fluent-ffmpeg";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import ffmpegStatic from "ffmpeg-static";
 import { db } from "~/server/db";
 import { getAdminClient } from "~/lib/supabase/admin";
