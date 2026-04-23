@@ -3,8 +3,8 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
 
-const SITE_URL = "https://altafoto.com.ar";
-const SHORT_URL = "altafoto.com.ar";
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://ivanamaritano.com";
+const SHORT_URL = SITE_URL.replace(/^https?:\/\//, "");
 
 type Format = "sticker" | "card" | "poster" | "plain";
 
