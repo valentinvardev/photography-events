@@ -234,6 +234,7 @@ export function FolderBrowser({
   const [lightbox, setLightbox] = useState<{
     url: string;
     mimeType: string | null;
+    filename: string | null;
     bibNumber: string | null;
     photoIds: string[];
     photoUrls: string[];
@@ -360,10 +361,11 @@ export function FolderBrowser({
         ? ap.filter((ph) => ph.bibNumber === bibNumber).map((ph) => ph.id)
         : [photoId];
     const idx = vp.findIndex((v) => v.id === photoId);
-    const mimeType = mimeTypeMapRef.current.get(photoId)?.mimeType ?? null;
+    const meta = mimeTypeMapRef.current.get(photoId);
     setLightbox({
       url,
-      mimeType,
+      mimeType: meta?.mimeType ?? null,
+      filename: meta?.filename ?? null,
       bibNumber,
       photoIds: sameBibIds,
       photoUrls: [url],
@@ -736,6 +738,7 @@ export function FolderBrowser({
         open={lightbox !== null}
         url={lightbox?.url ?? null}
         mimeType={lightbox?.mimeType ?? null}
+        filename={lightbox?.filename ?? null}
         onClose={() => setLightbox(null)}
         caption={
           lightbox && (

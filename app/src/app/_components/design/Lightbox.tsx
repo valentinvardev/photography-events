@@ -8,6 +8,7 @@ type Props = {
   onClose: () => void;
   url: string | null;
   mimeType?: string | null;
+  filename?: string | null;
   caption?: React.ReactNode;
   onPrev?: () => void;
   onNext?: () => void;
@@ -16,8 +17,10 @@ type Props = {
   total?: number;
 };
 
-export function Lightbox({ open, onClose, url, mimeType, caption, onPrev, onNext, toolbar, index, total }: Props) {
-  const isVideo = !!mimeType?.startsWith("video/");
+const VIDEO_EXT = /\.(mp4|mov|avi|webm|mkv|m4v)$/i;
+
+export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPrev, onNext, toolbar, index, total }: Props) {
+  const isVideo = !!mimeType?.startsWith("video/") || (!!filename && VIDEO_EXT.test(filename));
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {

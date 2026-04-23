@@ -407,7 +407,7 @@ export function PhotoManager({
                 onClick={() => selectMode ? toggleSelect(photo.id) : setLightboxIdx(i)}
               >
                 {photo.url ? (
-                  isVideoMimeType(photo.mimeType) ? (
+                  isVideoMimeType(photo.mimeType) || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(photo.filename ?? "") ? (
                     <>
                       <video
                         src={photo.url}
@@ -615,7 +615,7 @@ export function PhotoManager({
             onClick={(e) => e.stopPropagation()}
           >
             {currentPhoto.url ? (
-              isVideoMimeType(currentPhoto.mimeType) ? (
+              isVideoMimeType(currentPhoto.mimeType) || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(currentPhoto.filename ?? "") ? (
                 <video
                   key={currentPhoto.url}
                   src={currentPhoto.url}
