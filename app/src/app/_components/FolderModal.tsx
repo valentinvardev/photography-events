@@ -60,7 +60,7 @@ function PhotoRow({
           {bibNumber ? `#${bibNumber}` : "—"}
         </p>
       </div>
-      {price > 0 && (
+      {total > 0 && (
         <span className="font-mono text-[11px] tracking-[0.06em] text-[color:var(--color-ink)] shrink-0">
           ${price.toLocaleString("es-AR")}
         </span>
@@ -104,8 +104,11 @@ export function BibCheckoutModal({
   }, [photoIds, onClose]);
 
   const { data: collectionInfo } = api.collection.getPrice.useQuery({ collectionId });
-  const price = collectionInfo?.price ?? 0;
-  const total = price * photoIds.length;
+
+  // Use per-photo prices already stored in cart items (photo.price ?? collection.pricePerBib)
+  const priceById = new Map(cartItems.map((i) => [i.photoId, i.price]));
+  const getPhotoPrice = (id: string) => priceById.get(id) ?? (collectionInfo?.price ?? 0);
+  const total = photoIds.reduce((sum, id) => sum + getPhotoPrice(id), 0);
 
   const createPreference = api.purchase.createPreference.useMutation({
     onSuccess: (data) => {
@@ -204,7 +207,7 @@ export function BibCheckoutModal({
                           bibNumber={cartItem?.bibNumber ?? bib ?? null}
                           index={i}
                           total={photoIds.length}
-                          price={price}
+                          price={getPhotoPrice(id)}
                           onRemove={() => handleRemove(id)}
                           onPreview={(url) => setLightboxUrl(url)}
                         />
@@ -370,7 +373,7 @@ export function BibCheckoutModal({
           {/* Footer — only on cart step */}
           {step === "cart" && (
             <div className="border-t border-[color:var(--color-grey-300)] px-7 py-6 flex flex-col gap-4 shrink-0">
-              {price > 0 && (
+              {total > 0 && (
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                     Total · sin marca de agua
@@ -381,7 +384,7 @@ export function BibCheckoutModal({
                 </div>
               )}
               <div className="flex flex-col gap-3">
-                {price > 0 && (
+                {total > 0 && (
                   <button
                     onClick={() => setStep("buy")}
                     className="group inline-flex items-center justify-between border border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)] px-5 py-4 hover:bg-transparent hover:text-[color:var(--color-ink)] transition-colors"
