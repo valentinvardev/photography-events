@@ -222,6 +222,7 @@ export function FolderBrowser({
   collectionId: string;
   pricePerBib: number;
 }) {
+  const PAGE_SIZE = 20;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [galleryPage, setGalleryPage] = useState(0);
@@ -461,7 +462,6 @@ export function FolderBrowser({
     }
   };
 
-  const PAGE_SIZE = 20;
   const GRID = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10";
 
   return (
