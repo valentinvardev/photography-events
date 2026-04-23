@@ -49,7 +49,7 @@ function runFfmpeg(cmd: ffmpeg.FfmpegCommand): Promise<void> {
   return new Promise((resolve, reject) =>
     cmd
       .on("end", () => resolve())
-      .on("error", (err, stdout, stderr) => {
+      .on("error", (err: Error, _stdout: string, stderr: string) => {
         console.error("[VideoWatermark] ffmpeg error:", err.message);
         console.error("[VideoWatermark] stderr:", stderr);
         reject(err);
