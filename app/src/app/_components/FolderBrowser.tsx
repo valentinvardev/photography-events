@@ -81,14 +81,14 @@ const PhotoTile = memo(function PhotoTile({
               v.pause();
               v.currentTime = 0;
             }}
-            className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
+            className="w-full h-full object-cover object-top"
           />
         ) : (
           <img
             src={url}
             alt=""
             loading="lazy"
-            className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
+            className="w-full h-full object-cover object-top"
           />
         )}
 
