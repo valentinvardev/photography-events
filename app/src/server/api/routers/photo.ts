@@ -267,6 +267,21 @@ export const photoRouter = createTRPCRouter({
       await ctx.db.photo.deleteMany({ where: { id: { in: input.ids } } });
     }),
 
+  reprocessVideo: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const photo = await ctx.db.photo.findUnique({
+        where: { id: input.id },
+        select: { id: true, mimeType: true, filename: true },
+      });
+      if (!photo) throw new Error("Photo not found");
+      const isVideo = photo.mimeType?.startsWith("video/") ?? /\.(mp4|mov|webm|mkv|m4v)$/i.test(photo.filename);
+      if (!isVideo) throw new Error("Not a video");
+      const { runVideoWatermark } = await import("~/lib/video-processing");
+      const result = await runVideoWatermark(input.id);
+      return { previewKey: result.previewKey };
+    }),
+
   listUnwatermarked: protectedProcedure
     .input(z.object({ collectionId: z.string() }))
     .query(async ({ ctx, input }) => {
