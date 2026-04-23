@@ -8,6 +8,13 @@ import "./src/env.js";
 const config = {
   devIndicators: false,
   serverExternalPackages: ["ffmpeg-static", "fluent-ffmpeg"],
+  webpack(config, { isServer }) {
+    if (isServer) {
+      const prev = Array.isArray(config.externals) ? config.externals : [];
+      config.externals = [...prev, "ffmpeg-static", "fluent-ffmpeg"];
+    }
+    return config;
+  },
 };
 
 export default config;
