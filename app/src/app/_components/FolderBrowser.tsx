@@ -219,7 +219,7 @@ export function FolderBrowser({
     "idle" | "uploading" | "done" | "no-face" | "error"
   >("idle");
   const [faceBibs, setFaceBibs] = useState<{ bib: string; photoIds: string[] }[] | null>(null);
-  const [modal, setModal] = useState<{ bib: string; photoIds: string[] } | null>(null);
+  const [modal, setModal] = useState<{ bib: string; photoIds: string[]; allPhotoIds: string[]; totalPhotosInSearch: number } | null>(null);
   const [lightbox, setLightbox] = useState<{
     url: string;
     mimeType: string | null;
@@ -357,7 +357,8 @@ export function FolderBrowser({
     if (items.length === 0) return;
     const allBibs = [...new Set(items.map((i) => i.bibNumber).filter(Boolean))];
     const bib = allBibs.length === 1 ? (allBibs[0] ?? "") : "";
-    setModal({ bib, photoIds: items.map((i) => i.photoId) });
+    const allVisible = visiblePhotosRef.current.map((p) => p.id);
+    setModal({ bib, photoIds: items.map((i) => i.photoId), allPhotoIds: allVisible, totalPhotosInSearch: allVisible.length });
   }, []);
 
   // Checkout event listener — stable, never re-subscribes on cart changes
@@ -696,7 +697,12 @@ export function FolderBrowser({
               </div>
               <button
                 onClick={() => {
-                  setModal({ bib: lightbox.bibNumber ?? "", photoIds: lightbox.photoIds });
+                  setModal({
+                    bib: lightbox.bibNumber ?? "",
+                    photoIds: lightbox.photoIds,
+                    allPhotoIds: lightbox.photoIds,
+                    totalPhotosInSearch: lightbox.photoIds.length,
+                  });
                   setLightbox(null);
                 }}
                 className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-5 py-3 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
@@ -722,6 +728,8 @@ export function FolderBrowser({
         <BibCheckoutModal
           bib={modal.bib}
           photoIds={modal.photoIds}
+          allPhotoIds={modal.allPhotoIds}
+          totalPhotosInSearch={modal.totalPhotosInSearch}
           collectionId={collectionId}
           onClose={() => setModal(null)}
         />

@@ -77,6 +77,8 @@ model Collection {
     eventDate        DateTime?
     location         String?
     pricePerBib      Decimal   @default(0) @db.Decimal(10, 2)
+    packPrice        Decimal?  @db.Decimal(10, 2) // Fixed price for ALL photos found in search
+    discountTiers    Json?     // [{minQty: number, priceEach: number}] sorted by minQty asc
     currency         String    @default("ARS")
     isPublished      Boolean   @default(false)
     isFree           Boolean   @default(false) // True = photos accessible without purchase

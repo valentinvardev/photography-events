@@ -5,6 +5,8 @@ import { PhotoUploader } from "~/app/_components/admin/PhotoUploader";
 import { PhotoManager } from "~/app/_components/admin/PhotoManager";
 import { CollectionActions } from "~/app/_components/admin/CollectionActions";
 import { FaceReindexButton } from "~/app/_components/admin/FaceReindexButton";
+import { PricingPanel } from "~/app/_components/admin/PricingPanel";
+import { parseTiers } from "~/lib/pricing";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
 
@@ -155,16 +157,29 @@ export default async function EditCollectionPage({
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)]">
+      {/* Three-column layout: upload / pricing / gallery */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
         <div className="bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
             Subir fotos
           </p>
           <PhotoUploader collectionId={id} />
         </div>
+        <div className="bg-[color:var(--color-paper)] p-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+            Precios
+          </p>
+          <PricingPanel
+            collectionId={id}
+            initialPricePerBib={Number(collection.pricePerBib ?? 0)}
+            initialPackPrice={collection.packPrice !== null && collection.packPrice !== undefined ? Number(collection.packPrice) : null}
+            initialTiers={parseTiers(collection.discountTiers)}
+          />
+        </div>
+      </div>
 
-        <div className="lg:col-span-2 bg-[color:var(--color-paper)] p-6">
+      <div className="grid grid-cols-1 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)]">
+        <div className="bg-[color:var(--color-paper)] p-6">
           <div className="flex items-center gap-3 mb-5">
             <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
               Galería

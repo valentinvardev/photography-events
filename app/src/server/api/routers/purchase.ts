@@ -4,6 +4,7 @@ import { env } from "~/env";
 import { sendPurchaseApprovedEmail } from "~/lib/email";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
+import { parseTiers, calcEffectivePricePerPhoto } from "~/lib/pricing";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -30,12 +31,14 @@ export const purchaseRouter = createTRPCRouter({
         buyerName: z.string().optional(),
         buyerLastName: z.string().optional(),
         buyerPhone: z.string().optional(),
+        packMode: z.boolean().optional(),
+        totalPhotosInSearch: z.number().int().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const collection = await ctx.db.collection.findFirstOrThrow({
         where: { id: input.collectionId, isPublished: true },
-        select: { title: true, slug: true, pricePerBib: true },
+        select: { title: true, slug: true, pricePerBib: true, packPrice: true, discountTiers: true },
       });
 
       const photos = await ctx.db.photo.findMany({
@@ -44,10 +47,20 @@ export const purchaseRouter = createTRPCRouter({
       });
       if (photos.length === 0) throw new Error("No se encontraron fotos válidas para comprar.");
 
-      const totalAmount = photos.reduce(
-        (sum, p) => sum + Number(p.price ?? collection.pricePerBib),
-        0,
-      );
+      let totalAmount: number;
+
+      if (input.packMode && collection.packPrice !== null && collection.packPrice !== undefined) {
+        totalAmount = Number(collection.packPrice);
+      } else {
+        const tiers = parseTiers(collection.discountTiers);
+        const totalInSearch = input.totalPhotosInSearch ?? photos.length;
+        const basePrice = Number(collection.pricePerBib);
+        const effectiveBase = calcEffectivePricePerPhoto(totalInSearch, basePrice, tiers);
+        totalAmount = photos.reduce((sum, p) => {
+          const custom = p.price !== null ? Number(p.price) : null;
+          return sum + (custom !== null && custom !== basePrice ? custom : effectiveBase);
+        }, 0);
+      }
 
       const purchase = await ctx.db.purchase.create({
         data: {

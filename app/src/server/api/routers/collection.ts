@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "../../../../generated/prisma";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import {
   createTRPCRouter,
@@ -55,10 +56,15 @@ export const collectionRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const col = await ctx.db.collection.findFirst({
         where: { id: input.collectionId, isPublished: true },
-        select: { pricePerBib: true, title: true },
+        select: { pricePerBib: true, title: true, packPrice: true, discountTiers: true },
       });
       if (!col) return null;
-      return { price: Number(col.pricePerBib), title: col.title };
+      return {
+        price: Number(col.pricePerBib),
+        title: col.title,
+        packPrice: col.packPrice !== null && col.packPrice !== undefined ? Number(col.packPrice) : null,
+        discountTiers: col.discountTiers,
+      };
     }),
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
@@ -108,14 +114,20 @@ export const collectionRouter = createTRPCRouter({
         bannerUrl: z.string().optional(),
         bannerFocalY: z.number().min(0).max(1).optional(),
         pricePerBib: z.number().min(0).optional(),
+        packPrice: z.number().min(0).optional().nullable(),
+        discountTiers: z.array(z.object({ minQty: z.number().int().positive(), priceEach: z.number().min(0) })).optional().nullable(),
         isPublished: z.boolean().optional(),
         eventDate: z.string().optional(),
       }),
     )
     .mutation(({ ctx, input }) => {
-      const { eventDate, ...rest } = input;
+      const { eventDate, discountTiers, ...rest } = input;
       return ctx.db.collection.create({
-        data: { ...rest, eventDate: eventDate ? new Date(eventDate) : undefined },
+        data: {
+          ...rest,
+          eventDate: eventDate ? new Date(eventDate) : undefined,
+          discountTiers: discountTiers === null ? Prisma.DbNull : discountTiers ?? undefined,
+        },
       });
     }),
 
@@ -131,18 +143,23 @@ export const collectionRouter = createTRPCRouter({
         bannerUrl: z.string().optional().nullable(),
         bannerFocalY: z.number().min(0).max(1).optional(),
         pricePerBib: z.number().min(0).optional(),
+        packPrice: z.number().min(0).optional().nullable(),
+        discountTiers: z.array(z.object({ minQty: z.number().int().positive(), priceEach: z.number().min(0) })).optional().nullable(),
         isPublished: z.boolean().optional(),
         eventDate: z.string().optional().nullable(),
       }),
     )
     .mutation(({ ctx, input }) => {
-      const { id, eventDate, ...rest } = input;
+      const { id, eventDate, discountTiers, ...rest } = input;
       return ctx.db.collection.update({
         where: { id },
         data: {
           ...rest,
           ...(eventDate !== undefined
             ? { eventDate: eventDate ? new Date(eventDate) : null }
+            : {}),
+          ...(discountTiers !== undefined
+            ? { discountTiers: discountTiers === null ? Prisma.DbNull : discountTiers }
             : {}),
         },
       });

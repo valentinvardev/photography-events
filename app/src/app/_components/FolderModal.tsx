@@ -8,6 +8,7 @@ import { useCart } from "~/app/_components/CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
 import { Field } from "~/app/_components/design/Field";
 import { Lightbox } from "~/app/_components/design/Lightbox";
+import { parseTiers, calcEffectivePricePerPhoto } from "~/lib/pricing";
 
 type Step = "cart" | "buy" | "email";
 
@@ -78,15 +79,20 @@ function PhotoRow({
 export function BibCheckoutModal({
   bib,
   photoIds: initialPhotoIds,
+  allPhotoIds,
+  totalPhotosInSearch,
   collectionId,
   onClose,
 }: {
   bib: string;
   photoIds: string[];
+  allPhotoIds: string[];
+  totalPhotosInSearch: number;
   collectionId: string;
   onClose: () => void;
 }) {
   const [step, setStep] = useState<Step>("cart");
+  const [packMode, setPackMode] = useState(false);
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -100,15 +106,31 @@ export function BibCheckoutModal({
   const router = useRouter();
 
   useEffect(() => {
-    if (photoIds.length === 0) onClose();
-  }, [photoIds, onClose]);
+    if (photoIds.length === 0 && !packMode) onClose();
+  }, [photoIds, packMode, onClose]);
 
   const { data: collectionInfo } = api.collection.getPrice.useQuery({ collectionId });
 
-  // Use per-photo prices already stored in cart items (photo.price ?? collection.pricePerBib)
+  const basePrice = collectionInfo?.price ?? 0;
+  const tiers = parseTiers(collectionInfo?.discountTiers);
+  const packPrice = collectionInfo?.packPrice ?? null;
+  const effectiveBase = calcEffectivePricePerPhoto(totalPhotosInSearch, basePrice, tiers);
+  const activeTier = tiers.slice().reverse().find((t) => totalPhotosInSearch >= t.minQty);
+
+  // Per-photo prices: use custom price if different from base, else effective tier price
   const priceById = new Map(cartItems.map((i) => [i.photoId, i.price]));
-  const getPhotoPrice = (id: string) => priceById.get(id) ?? (collectionInfo?.price ?? 0);
-  const total = photoIds.reduce((sum, id) => sum + getPhotoPrice(id), 0);
+  const getPhotoPrice = (id: string) => {
+    const custom = priceById.get(id);
+    if (custom !== undefined && custom !== basePrice) return custom;
+    return effectiveBase;
+  };
+
+  const selectedTotal = packMode
+    ? (packPrice ?? 0)
+    : photoIds.reduce((sum, id) => sum + getPhotoPrice(id), 0);
+
+  const packAvailable = packPrice !== null && allPhotoIds.length > 0;
+  const packPhotoCount = allPhotoIds.length;
 
   const createPreference = api.purchase.createPreference.useMutation({
     onSuccess: (data) => {
@@ -136,11 +158,13 @@ export function BibCheckoutModal({
     if (!email || !name) return;
     createPreference.mutate({
       collectionId,
-      photoIds,
+      photoIds: packMode ? allPhotoIds : photoIds,
       buyerEmail: email,
       buyerName: name,
       buyerLastName: lastName || undefined,
       buyerPhone: phone || undefined,
+      packMode: packMode || undefined,
+      totalPhotosInSearch,
     });
   };
 
@@ -150,7 +174,6 @@ export function BibCheckoutModal({
     accessByEmail.mutate({ email: emailInput, collectionId, bibNumber: bib });
   };
 
-  const stepIndex = step === "cart" ? "01" : step === "buy" ? "02" : "01b";
   const stepTitle =
     step === "buy" ? "Tus datos." : step === "email" ? "Acceder." : "Tu selección.";
 
@@ -162,7 +185,11 @@ export function BibCheckoutModal({
           <div className="px-7 pt-9 pb-6 flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-                {step === "email" ? "Ya compré" : `${photoIds.length} foto${photoIds.length !== 1 ? "s" : ""} seleccionada${photoIds.length !== 1 ? "s" : ""}`}
+                {step === "email"
+                  ? "Ya compré"
+                  : packMode
+                  ? `Pack · ${packPhotoCount} foto${packPhotoCount !== 1 ? "s" : ""}`
+                  : `${photoIds.length} foto${photoIds.length !== 1 ? "s" : ""} seleccionada${photoIds.length !== 1 ? "s" : ""}`}
               </p>
               <h2
                 className="mt-3 font-display italic font-light leading-[0.95] tracking-[-0.02em] text-[color:var(--color-ink)]"
@@ -197,23 +224,88 @@ export function BibCheckoutModal({
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <ul>
-                    {photoIds.map((id, i) => {
-                      const cartItem = cartItems.find((c) => c.photoId === id);
-                      return (
-                        <PhotoRow
-                          key={id}
-                          photoId={id}
-                          bibNumber={cartItem?.bibNumber ?? bib ?? null}
-                          index={i}
-                          total={photoIds.length}
-                          price={getPhotoPrice(id)}
-                          onRemove={() => handleRemove(id)}
-                          onPreview={(url) => setLightboxUrl(url)}
-                        />
-                      );
-                    })}
-                  </ul>
+                  {/* Active tier badge */}
+                  {activeTier && (
+                    <div className="mb-5 flex items-center gap-3 border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-3">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] shrink-0" />
+                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#16a34a]">
+                        Descuento activo · {totalPhotosInSearch} foto{totalPhotosInSearch !== 1 ? "s" : ""} en tu búsqueda
+                        · ${effectiveBase.toLocaleString("es-AR")} c/u
+                      </p>
+                    </div>
+                  )}
+
+                  {!packMode ? (
+                    <ul>
+                      {photoIds.map((id, i) => {
+                        const cartItem = cartItems.find((c) => c.photoId === id);
+                        return (
+                          <PhotoRow
+                            key={id}
+                            photoId={id}
+                            bibNumber={cartItem?.bibNumber ?? bib ?? null}
+                            index={i}
+                            total={photoIds.length}
+                            price={getPhotoPrice(id)}
+                            onRemove={() => handleRemove(id)}
+                            onPreview={(url) => setLightboxUrl(url)}
+                          />
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="border border-[color:var(--color-grey-300)] px-5 py-4">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
+                        Pack completo
+                      </p>
+                      <p className="font-display italic text-[28px] leading-none text-[color:var(--color-ink)]">
+                        {packPhotoCount} foto{packPhotoCount !== 1 ? "s" : ""}
+                      </p>
+                      <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)]">
+                        Todas las fotos encontradas en tu búsqueda
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Pack upsell */}
+                  {packAvailable && (
+                    <div className="mt-6 border border-[color:var(--color-grey-300)] px-5 py-4">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+                        {packMode ? "O comprá fotos sueltas" : "Mejor oferta"}
+                      </p>
+                      {!packMode ? (
+                        <>
+                          <div className="flex items-baseline justify-between mb-3">
+                            <p className="font-display italic text-[20px] leading-none text-[color:var(--color-ink)]">
+                              Pack · {packPhotoCount} foto{packPhotoCount !== 1 ? "s" : ""}
+                            </p>
+                            <p className="font-display italic text-[24px] leading-none text-[color:var(--color-ink)]">
+                              ${packPrice!.toLocaleString("es-AR")}
+                            </p>
+                          </div>
+                          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] mb-4">
+                            Todas tus fotos · sin marca de agua
+                          </p>
+                          <button
+                            onClick={() => setPackMode(true)}
+                            className="w-full group inline-flex items-center justify-between border border-[color:var(--color-ink)] px-4 py-3 hover:bg-[color:var(--color-ink)] hover:text-[color:var(--color-paper)] transition-colors"
+                          >
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em]">
+                              Comprar pack · ${packPrice!.toLocaleString("es-AR")}
+                            </span>
+                            <span className="font-mono text-[10px] tracking-[0.18em] transition-transform group-hover:translate-x-1">→</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setPackMode(false)}
+                          className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors"
+                        >
+                          ← Volver a selección individual
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -232,10 +324,10 @@ export function BibCheckoutModal({
                 >
                   <div className="flex items-baseline justify-between border-b border-[color:var(--color-grey-300)] pb-4">
                     <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-                      {photoIds.length} {photoIds.length === 1 ? "foto" : "fotos"}
+                      {packMode ? `Pack · ${packPhotoCount} fotos` : `${photoIds.length} ${photoIds.length === 1 ? "foto" : "fotos"}`}
                     </p>
                     <p className="font-display italic text-[28px] leading-none text-[color:var(--color-ink)]">
-                      ${total.toLocaleString("es-AR")}
+                      ${selectedTotal.toLocaleString("es-AR")}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
@@ -291,7 +383,7 @@ export function BibCheckoutModal({
                       <span className="font-mono text-[11px] uppercase tracking-[0.22em]">
                         {createPreference.isPending
                           ? "Redirigiendo a MercadoPago…"
-                          : `Pagar $${total.toLocaleString("es-AR")}`}
+                          : `Pagar $${selectedTotal.toLocaleString("es-AR")}`}
                       </span>
                       <span className="font-mono text-[11px] tracking-[0.22em] transition-transform group-hover:translate-x-1">
                         →
@@ -373,24 +465,24 @@ export function BibCheckoutModal({
           {/* Footer — only on cart step */}
           {step === "cart" && (
             <div className="border-t border-[color:var(--color-grey-300)] px-7 py-6 flex flex-col gap-4 shrink-0">
-              {total > 0 && (
+              {selectedTotal > 0 && (
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-                    Total · sin marca de agua
+                    {packMode ? "Pack · precio total" : "Total · sin marca de agua"}
                   </span>
                   <span className="font-display italic text-[28px] leading-none text-[color:var(--color-ink)]">
-                    ${total.toLocaleString("es-AR")}
+                    ${selectedTotal.toLocaleString("es-AR")}
                   </span>
                 </div>
               )}
               <div className="flex flex-col gap-3">
-                {total > 0 && (
+                {selectedTotal > 0 && (
                   <button
                     onClick={() => setStep("buy")}
                     className="group inline-flex items-center justify-between border border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)] px-5 py-4 hover:bg-transparent hover:text-[color:var(--color-ink)] transition-colors"
                   >
                     <span className="font-mono text-[11px] uppercase tracking-[0.22em]">
-                      Comprar · ${total.toLocaleString("es-AR")}
+                      Comprar · ${selectedTotal.toLocaleString("es-AR")}
                     </span>
                     <span className="font-mono text-[11px] tracking-[0.22em] transition-transform group-hover:translate-x-1">
                       →
