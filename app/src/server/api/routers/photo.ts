@@ -7,7 +7,7 @@ import {
   deleteS3Objects,
   isS3Key,
 } from "~/lib/s3";
-import { isVideoMimeType } from "~/lib/video-processing";
+import { isVideoMimeType } from "~/lib/video-utils";
 import {
   createTRPCRouter,
   protectedProcedure,

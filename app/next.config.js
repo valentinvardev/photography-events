@@ -7,6 +7,7 @@ import "./src/env.js";
 /** @type {import("next").NextConfig} */
 const config = {
   devIndicators: false,
+  serverExternalPackages: ["ffmpeg-static", "fluent-ffmpeg"],
 };
 
 export default config;
