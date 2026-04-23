@@ -26,15 +26,26 @@ function fmt(s: number) {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-function VideoPlayer({ url }: { url: string }) {
+function guessVideoType(url: string, mimeType?: string | null, filename?: string | null): string {
+  if (mimeType?.startsWith("video/")) return mimeType;
+  const name = filename ?? url;
+  if (/\.webm$/i.test(name)) return "video/webm";
+  if (/\.mov$/i.test(name)) return "video/quicktime";
+  return "video/mp4";
+}
+
+function VideoPlayer({ url, mimeType, filename }: { url: string; mimeType?: string | null; filename?: string | null }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
+  const [error, setError] = useState(false);
+  const videoType = guessVideoType(url, mimeType, filename);
 
   useEffect(() => {
+    setError(false);
     const v = ref.current;
     if (!v) return;
     v.currentTime = 0;
@@ -61,21 +72,32 @@ function VideoPlayer({ url }: { url: string }) {
     <div className="flex flex-col items-center w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
       {/* Video element */}
       <div className="relative w-full" style={{ maxHeight: "calc(100vh - 220px)" }}>
-        <video
-          ref={ref}
-          key={url}
-          src={url}
-          playsInline
-          muted={muted}
-          onTimeUpdate={() => !seeking && setCurrent(ref.current?.currentTime ?? 0)}
-          onDurationChange={() => setDuration(ref.current?.duration ?? 0)}
-          onEnded={() => setPlaying(false)}
-          onClick={toggle}
-          className="w-full object-contain cursor-pointer"
-          style={{ maxHeight: "calc(100vh - 220px)" }}
-        />
+        {error ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-[color:var(--color-paper)]/50">
+            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em]">No se pudo cargar el video</p>
+          </div>
+        ) : (
+          <video
+            ref={ref}
+            key={url}
+            playsInline
+            muted={muted}
+            onTimeUpdate={() => !seeking && setCurrent(ref.current?.currentTime ?? 0)}
+            onDurationChange={() => setDuration(ref.current?.duration ?? 0)}
+            onEnded={() => setPlaying(false)}
+            onError={() => setError(true)}
+            onClick={toggle}
+            className="w-full object-contain cursor-pointer"
+            style={{ maxHeight: "calc(100vh - 220px)" }}
+          >
+            <source src={url} type={videoType} />
+          </video>
+        )}
         {/* Play overlay when paused */}
-        {!playing && (
+        {!error && !playing && (
           <div
             className="absolute inset-0 flex items-center justify-center cursor-pointer"
             onClick={toggle}
@@ -192,7 +214,8 @@ export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPr
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           onClick={onClose}
-          className="fixed inset-0 z-[120] bg-[color:var(--color-ink)]/97 flex flex-col"
+          data-cursor="dark"
+          className="fixed inset-0 z-[120] bg-[color:var(--color-ink)]/97 flex flex-col cursor-none"
         >
           {/* top bar */}
           <div
@@ -223,7 +246,7 @@ export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPr
           {/* content — clicking backdrop closes, clicking content stops propagation */}
           <div className="relative flex-1 flex items-center justify-center px-4 md:px-16 py-2 overflow-hidden">
             {isVideo ? (
-              <VideoPlayer url={url} />
+              <VideoPlayer url={url} mimeType={mimeType} filename={filename} />
             ) : (
               <motion.img
                 key={url}
