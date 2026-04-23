@@ -34,7 +34,7 @@ export const photoRouter = createTRPCRouter({
       });
       const norm = (p: (typeof photos)[number]) => ({
         ...p,
-        price: p.price !== null ? Number(p.price) : null,
+        price: p.price !== null ? p.price.toNumber() : null,
       });
       return [
         ...photos.filter((p) => !p.bibNumber).map(norm),
@@ -94,7 +94,7 @@ export const photoRouter = createTRPCRouter({
 
       const normPrice = (p: (typeof exact)[number]) => ({
         ...p,
-        price: p.price !== null ? Number(p.price) : null,
+        price: p.price !== null ? p.price.toNumber() : null,
       });
 
       const groupByBib = (photos: typeof exact) => {
