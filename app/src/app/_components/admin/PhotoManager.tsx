@@ -411,15 +411,7 @@ export function PhotoManager({
                 {photo.url ? (
                   isVideoMimeType(photo.mimeType) || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(photo.filename ?? "") ? (
                     <>
-                      {photo.previewKey ? (
-                        <video src={photo.url ?? undefined} muted preload="metadata" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-black flex items-center justify-center">
-                          <svg className="w-6 h-6 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-                          </svg>
-                        </div>
-                      )}
+                      <video src={photo.url ?? undefined} muted preload="metadata" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
                           <svg className="w-3 h-3 text-white translate-x-px" fill="currentColor" viewBox="0 0 24 24">
@@ -427,13 +419,6 @@ export function PhotoManager({
                           </svg>
                         </div>
                       </div>
-                      {!photo.previewKey && (
-                        <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
-                          <span className="font-mono text-[8px] uppercase tracking-[0.1em] bg-yellow-500/90 text-black px-1 py-0.5 block text-center">
-                            Sin preview
-                          </span>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <img
@@ -628,38 +613,18 @@ export function PhotoManager({
           >
             {currentPhoto.url ? (
               isVideoMimeType(currentPhoto.mimeType) || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(currentPhoto.filename ?? "") ? (
-                <div className="flex flex-col items-center gap-4 w-full max-w-3xl">
-                  {currentPhoto.previewKey ? (
-                    <video
-                      key={currentPhoto.url}
-                      controls
-                      autoPlay
-                      playsInline
-                      className="max-w-full max-h-full object-contain"
-                      style={{ maxHeight: "calc(100vh - 200px)" }}
-                    >
-                      <source src={currentPhoto.url} type="video/mp4" />
-                    </video>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 py-12 text-white/50">
-                      <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-                      </svg>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.18em]">Preview no generado</p>
-                      <p className="font-mono text-[9px] text-white/30 text-center max-w-xs">El video original puede ser H.265 (no compatible con Chrome). Generá el preview H.264.</p>
-                      <button
-                        onClick={() => reprocess.mutate({ id: currentPhoto.id })}
-                        disabled={reprocess.isPending}
-                        className="mt-2 px-4 py-2 border border-white/30 hover:border-white font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-colors disabled:opacity-40"
-                      >
-                        {reprocess.isPending ? "Procesando…" : "Generar preview H.264"}
-                      </button>
-                      {reprocess.isError && (
-                        <p className="font-mono text-[9px] text-red-400 mt-1">{reprocess.error.message}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <video
+                  key={currentPhoto.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-w-full object-contain"
+                  style={{ maxHeight: "calc(100vh - 200px)" }}
+                >
+                  <source src={currentPhoto.url} type="video/mp4" />
+                  <source src={currentPhoto.url} type="video/quicktime" />
+                  <source src={currentPhoto.url} type="video/webm" />
+                </video>
               ) : (
                 <img
                   src={currentPhoto.url}
