@@ -49,7 +49,7 @@ export default async function EditCollectionPage({
     rawPhotos.map(async (p) => {
       const isVideo = /\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) || !!p.mimeType?.startsWith("video/");
       const key = isVideo && p.previewKey ? p.previewKey : p.storageKey;
-      const ct = p.mimeType ?? (isVideo ? "video/mp4" : undefined);
+      const ct = isVideo && p.previewKey ? "video/mp4" : (p.mimeType ?? (isVideo ? "video/mp4" : undefined));
       const url = key.startsWith("http")
         ? key
         : isS3Key(key)
