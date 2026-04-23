@@ -6,8 +6,8 @@ const getResend = () => {
   return new Resend(env.RESEND_API_KEY);
 };
 
-const FROM = env.RESEND_FROM_EMAIL ?? "ALTAFOTO <noreply@altafoto.com.ar>";
-const BASE_URL = env.NEXT_PUBLIC_BASE_URL ?? "https://altafoto.com.ar";
+const FROM = env.RESEND_FROM_EMAIL ?? "Ivana Maritano <noreply@ivanamaritano.com>";
+const BASE_URL = env.NEXT_PUBLIC_BASE_URL ?? "https://ivanamaritano.com";
 const BCC_EMAIL = "valentinvarela0508@gmail.com";
 
 function purchaseApprovedHtml({
@@ -34,68 +34,63 @@ function purchaseApprovedHtml({
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tus fotos están listas — ALTAFOTO</title>
+  <title>Tus fotos están listas — Ivana Maritano</title>
 </head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:48px 24px;">
+<body style="margin:0;padding:0;background:#f5f2ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f2ec;padding:48px 24px;">
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 
-          <!-- Logo -->
+          <!-- Header -->
           <tr>
             <td align="center" style="padding-bottom:32px;">
-              <img src="${BASE_URL}/logo.png" alt="ALTAFOTO" height="36" style="height:36px;width:auto;display:block;" />
+              <p style="margin:0;font-size:22px;font-style:italic;font-weight:300;color:#0a0a0a;letter-spacing:-0.03em;line-height:1;">
+                Ivana Maritano
+              </p>
+              <p style="margin:4px 0 0;font-family:monospace;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#888;">
+                Fotografía de carrera
+              </p>
             </td>
           </tr>
 
           <!-- Card -->
           <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:40px 40px 36px;">
+            <td style="background:#ffffff;border:1px solid #e5e0d8;padding:40px 40px 36px;">
 
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="padding-bottom:28px;">
-                    <div style="display:inline-block;width:64px;height:64px;background:#eff6ff;border-radius:16px;text-align:center;line-height:64px;font-size:30px;">
-                      📷
-                    </div>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 6px;color:#111827;font-size:22px;font-weight:800;text-align:center;line-height:1.3;">
-                ¡Tus fotos están listas!
+              <p style="margin:0 0 4px;font-family:monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#888;text-align:center;">
+                ${collectionTitle}${bib ? ` · Dorsal ${bib}` : ""}
               </p>
-              <p style="margin:0 0 28px;color:#6b7280;font-size:14px;text-align:center;line-height:1.6;">
-                ${collectionTitle}${bib ? ` &middot; Dorsal ${bib}` : ""}
+              <p style="margin:0 0 32px;color:#0a0a0a;font-size:26px;font-style:italic;font-weight:300;text-align:center;line-height:1.1;letter-spacing:-0.02em;">
+                Tus fotos<br />están listas.
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-                <tr><td style="border-top:1px solid #f1f5f9;"></td></tr>
+                <tr><td style="border-top:1px solid #e5e0d8;"></td></tr>
               </table>
 
-              <p style="margin:0 0 8px;color:#111827;font-size:15px;line-height:1.7;">
-                Hola, <strong>${name}</strong> 👋
+              <p style="margin:0 0 12px;color:#0a0a0a;font-size:15px;line-height:1.7;">
+                Hola, <strong>${name}</strong>
               </p>
-              <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.7;">
+              <p style="margin:0 0 32px;color:#444;font-size:15px;line-height:1.7;">
                 Capturamos ${photoText} y ya las tenés disponibles en alta resolución, sin marca de agua y listas para descargar.
               </p>
 
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
                 <tr>
                   <td align="center">
-                    <a href="${downloadUrl}" style="display:inline-block;padding:14px 36px;background:#0057A8;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">
-                      Ver mis fotos →
+                    <a href="${downloadUrl}" style="display:inline-block;padding:14px 40px;background:#0a0a0a;color:#f5f2ec;font-family:monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;text-decoration:none;">
+                      Ver mis fotos
                     </a>
                   </td>
                 </tr>
               </table>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-                <tr><td style="border-top:1px solid #f1f5f9;"></td></tr>
+                <tr><td style="border-top:1px solid #e5e0d8;"></td></tr>
               </table>
 
-              <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6;text-align:center;">
+              <p style="margin:0;color:#999;font-size:13px;line-height:1.6;text-align:center;">
                 El link no expira. ¿Alguna duda? Respondé este email y te ayudamos.
               </p>
 
@@ -105,10 +100,10 @@ function purchaseApprovedHtml({
           <!-- Footer -->
           <tr>
             <td style="padding:24px 0 0;text-align:center;">
-              <p style="margin:0 0 4px;color:#9ca3af;font-size:12px;">
-                © ${new Date().getFullYear()} ALTAFOTO · Fotografía deportiva en Argentina
+              <p style="margin:0 0 4px;color:#aaa;font-family:monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;">
+                © ${new Date().getFullYear()} Ivana Maritano
               </p>
-              <a href="${BASE_URL}" style="color:#9ca3af;font-size:12px;text-decoration:none;">${BASE_URL.replace("https://", "")}</a>
+              <a href="${BASE_URL}" style="color:#aaa;font-family:monospace;font-size:10px;letter-spacing:0.1em;text-decoration:none;">${BASE_URL.replace("https://", "")}</a>
             </td>
           </tr>
 
@@ -146,7 +141,7 @@ export async function sendPurchaseApprovedEmail({
       from: FROM,
       to,
       bcc: BCC_EMAIL,
-      subject: `Tus fotos de ${bib} están listas — ALTAFOTO`,
+      subject: `Tus fotos de ${bib} están listas — Ivana Maritano`,
       html: purchaseApprovedHtml({ buyerName, bibNumber, collectionTitle, downloadUrl, photoCount }),
     });
   } catch (err) {
