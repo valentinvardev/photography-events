@@ -39,7 +39,7 @@ export default async function EditCollectionPage({
       orderBy: [{ bibNumber: "asc" }, { order: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: { id: true, filename: true, bibNumber: true, storageKey: true, price: true },
+      select: { id: true, filename: true, bibNumber: true, storageKey: true, price: true, mimeType: true },
     }),
   ]);
 

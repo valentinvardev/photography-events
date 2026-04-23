@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { ConfirmModal } from "./ConfirmModal";
+import { isVideoMimeType } from "~/lib/video-utils";
 
 type Photo = {
   id: string;
@@ -12,6 +13,7 @@ type Photo = {
   storageKey: string;
   url: string | null;
   price: number | null;
+  mimeType: string | null;
 };
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -405,11 +407,29 @@ export function PhotoManager({
                 onClick={() => selectMode ? toggleSelect(photo.id) : setLightboxIdx(i)}
               >
                 {photo.url ? (
-                  <img
-                    src={photo.url}
-                    alt={photo.filename}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+                  isVideoMimeType(photo.mimeType) ? (
+                    <>
+                      <video
+                        src={photo.url}
+                        muted
+                        preload="metadata"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white translate-x-px" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <img
+                      src={photo.url}
+                      alt={photo.filename}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  )
                 ) : (
                   <PhotoSkeleton />
                 )}
@@ -595,13 +615,25 @@ export function PhotoManager({
             onClick={(e) => e.stopPropagation()}
           >
             {currentPhoto.url ? (
-              <img
-                src={currentPhoto.url}
-                alt={currentPhoto.filename}
-                className="max-w-full max-h-full object-contain"
-                style={{ maxHeight: "calc(100vh - 130px)" }}
-                draggable={false}
-              />
+              isVideoMimeType(currentPhoto.mimeType) ? (
+                <video
+                  key={currentPhoto.url}
+                  src={currentPhoto.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-w-full max-h-full object-contain"
+                  style={{ maxHeight: "calc(100vh - 130px)" }}
+                />
+              ) : (
+                <img
+                  src={currentPhoto.url}
+                  alt={currentPhoto.filename}
+                  className="max-w-full max-h-full object-contain"
+                  style={{ maxHeight: "calc(100vh - 130px)" }}
+                  draggable={false}
+                />
+              )
             ) : (
               <div className="w-48 h-48 bg-white/5 animate-pulse flex items-center justify-center">
                 <svg className="w-10 h-10 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
