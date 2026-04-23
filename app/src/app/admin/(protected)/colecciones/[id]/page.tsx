@@ -47,10 +47,11 @@ export default async function EditCollectionPage({
 
   const photos = await Promise.all(
     rawPhotos.map(async (p) => {
+      const ct = p.mimeType ?? (/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) ? "video/mp4" : undefined);
       const url = p.storageKey.startsWith("http")
         ? p.storageKey
         : isS3Key(p.storageKey)
-        ? await createS3DownloadUrl(p.storageKey, 3600)
+        ? await createS3DownloadUrl(p.storageKey, 3600, ct)
         : await createSignedUrl(p.storageKey, 3600);
       return { ...p, price: p.price !== null ? Number(p.price) : null, url };
     }),

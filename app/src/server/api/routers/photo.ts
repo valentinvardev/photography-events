@@ -124,10 +124,11 @@ export const photoRouter = createTRPCRouter({
       const results = await Promise.all(
         photos.map(async (p) => {
           const key = p.previewKey ?? p.storageKey;
+          const ct = p.mimeType ?? (/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) ? "video/mp4" : undefined);
           const url = isS3Key(key)
-            ? await createS3DownloadUrl(key, 3600)
+            ? await createS3DownloadUrl(key, 3600, ct ?? undefined)
             : await createSignedUrl(key, 3600);
-          return { id: p.id, url, mimeType: p.mimeType, filename: p.filename };
+          return { id: p.id, url, mimeType: ct ?? p.mimeType, filename: p.filename };
         }),
       );
       return results.filter(
