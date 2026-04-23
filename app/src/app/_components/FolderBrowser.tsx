@@ -224,6 +224,7 @@ export function FolderBrowser({
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [galleryPage, setGalleryPage] = useState(0);
   const [faceActive, setFaceActive] = useState(false);
   const [faceStatus, setFaceStatus] = useState<
     "idle" | "uploading" | "done" | "no-face" | "error"
@@ -318,13 +319,14 @@ export function FolderBrowser({
         })),
       );
     }
-    return (allPhotos ?? []).map((p) => ({
+    const start = galleryPage * PAGE_SIZE;
+    return (allPhotos ?? []).slice(start, start + PAGE_SIZE).map((p) => ({
       id: p.id,
       bibNumber: p.bibNumber,
       price: priceMap.get(p.id) ?? pricePerBib,
       isFuzzy: false as const,
     }));
-  }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib]);
+  }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib, galleryPage, PAGE_SIZE]);
 
   // Single batch URL query — converts N per-tile queries into 1 request
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
@@ -457,6 +459,7 @@ export function FolderBrowser({
     }
   };
 
+  const PAGE_SIZE = 20;
   const GRID = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10";
 
   return (
@@ -676,13 +679,13 @@ export function FolderBrowser({
                 {String(allPhotos.length).padStart(3, "0")} fotografías · clic para previsualizar
               </p>
               <div className={GRID}>
-                {allPhotos.map((p, i) => (
+                {visiblePhotos.map((p, i) => (
                   <PhotoTile
                     key={p.id}
                     photoId={p.id}
                     bibNumber={p.bibNumber}
-                    index={i}
-                    price={priceMap.get(p.id) ?? pricePerBib}
+                    index={galleryPage * PAGE_SIZE + i}
+                    price={p.price}
                     inCart={isInCart(p.id)}
                     url={urlMap.get(p.id) ?? null}
                     mimeType={mimeTypeMap.get(p.id)?.mimeType}
@@ -692,6 +695,29 @@ export function FolderBrowser({
                   />
                 ))}
               </div>
+              {allPhotos.length > PAGE_SIZE && (
+                <div className="mt-12 flex items-center justify-between border-t border-[color:var(--color-grey-300)] pt-6">
+                  <button
+                    onClick={() => { setGalleryPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    disabled={galleryPage === 0}
+                    className="group inline-flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-ink)] disabled:text-[color:var(--color-grey-400)] disabled:pointer-events-none transition-colors"
+                  >
+                    <span className="transition-transform group-hover:-translate-x-1">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                    {galleryPage + 1} / {Math.ceil(allPhotos.length / PAGE_SIZE)}
+                  </p>
+                  <button
+                    onClick={() => { setGalleryPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    disabled={(galleryPage + 1) * PAGE_SIZE >= allPhotos.length}
+                    className="group inline-flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-ink)] disabled:text-[color:var(--color-grey-400)] disabled:pointer-events-none transition-colors"
+                  >
+                    <span>Siguiente</span>
+                    <span className="transition-transform group-hover:translate-x-1">→</span>
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <div className="border border-dashed border-[color:var(--color-grey-300)] py-24 text-center">
