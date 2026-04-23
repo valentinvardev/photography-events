@@ -41,18 +41,20 @@ export default async function EditCollectionPage({
       orderBy: [{ bibNumber: "asc" }, { order: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: { id: true, filename: true, bibNumber: true, storageKey: true, price: true, mimeType: true },
+      select: { id: true, filename: true, bibNumber: true, storageKey: true, previewKey: true, price: true, mimeType: true },
     }),
   ]);
 
   const photos = await Promise.all(
     rawPhotos.map(async (p) => {
-      const ct = p.mimeType ?? (/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) ? "video/mp4" : undefined);
-      const url = p.storageKey.startsWith("http")
-        ? p.storageKey
-        : isS3Key(p.storageKey)
-        ? await createS3DownloadUrl(p.storageKey, 3600, ct)
-        : await createSignedUrl(p.storageKey, 3600);
+      const isVideo = /\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) || !!p.mimeType?.startsWith("video/");
+      const key = isVideo && p.previewKey ? p.previewKey : p.storageKey;
+      const ct = p.mimeType ?? (isVideo ? "video/mp4" : undefined);
+      const url = key.startsWith("http")
+        ? key
+        : isS3Key(key)
+        ? await createS3DownloadUrl(key, 3600, ct)
+        : await createSignedUrl(key, 3600);
       return { ...p, price: p.price !== null ? Number(p.price) : null, url };
     }),
   );
