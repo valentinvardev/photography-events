@@ -16,13 +16,16 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
+  console.log("[WatermarkSettings] POST session:", !!session);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = getAdminClient();
+  console.log("[WatermarkSettings] supabase client:", !!supabase);
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
   const form = await request.formData();
   const file = form.get("file") as File | null;
+  console.log("[WatermarkSettings] file:", file?.name, file?.type, file?.size);
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -30,7 +33,10 @@ export async function POST(request: NextRequest) {
     .from("photos")
     .upload(WATERMARK_KEY, bytes, { contentType: file.type, upsert: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[WatermarkSettings] upload error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
