@@ -5,6 +5,7 @@ import { PhotoUploader } from "~/app/_components/admin/PhotoUploader";
 import { PhotoManager } from "~/app/_components/admin/PhotoManager";
 import { CollectionActions } from "~/app/_components/admin/CollectionActions";
 import { FaceReindexButton } from "~/app/_components/admin/FaceReindexButton";
+import { WatermarkAllButton } from "~/app/_components/admin/WatermarkAllButton";
 import { PricingPanel } from "~/app/_components/admin/PricingPanel";
 import { parseTiers } from "~/lib/pricing";
 import { createSignedUrl } from "~/lib/supabase/admin";
@@ -154,9 +155,10 @@ export default async function EditCollectionPage({
           ))}
         </div>
 
-        {/* Reindex */}
-        <div className="px-6 py-4 border-t border-[color:var(--color-grey-300)]">
+        {/* Reindex + Watermark */}
+        <div className="px-6 py-4 border-t border-[color:var(--color-grey-300)] flex items-center gap-6 flex-wrap">
           <FaceReindexButton collectionId={collection.id} totalPhotos={totalCount} />
+          <WatermarkAllButton collectionId={collection.id} />
         </div>
       </div>
 
