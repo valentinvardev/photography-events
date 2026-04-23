@@ -11,6 +11,12 @@ import { Lightbox } from "~/app/_components/design/Lightbox";
 // URL is passed from parent batch query — no per-tile API call.
 // memo'd so it only re-renders when its own props change (e.g. inCart flips).
 
+function isTileVideo(mimeType: string | null | undefined, filename?: string): boolean {
+  if (mimeType) return mimeType.startsWith("video/");
+  if (!filename) return false;
+  return /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(filename);
+}
+
 const PhotoTile = memo(function PhotoTile({
   photoId,
   bibNumber,
@@ -19,6 +25,8 @@ const PhotoTile = memo(function PhotoTile({
   inCart,
   isFuzzy,
   url,
+  mimeType,
+  filename,
   onOpenLightbox,
   onToggleCart,
 }: {
@@ -29,9 +37,12 @@ const PhotoTile = memo(function PhotoTile({
   inCart: boolean;
   isFuzzy?: boolean;
   url: string | null;
+  mimeType?: string | null;
+  filename?: string;
   onOpenLightbox: (photoId: string, bibNumber: string | null, url: string) => void;
   onToggleCart: (photoId: string, bibNumber: string | null, url: string, price: number) => void;
 }) {
+  const isVideo = isTileVideo(mimeType, filename);
   return (
     <div
       className="group relative cursor-pointer"
@@ -57,6 +68,21 @@ const PhotoTile = memo(function PhotoTile({
 
         {!url ? (
           <div className="w-full h-full animate-pulse bg-[color:var(--color-grey-300)]" />
+        ) : isVideo ? (
+          <video
+            src={url}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onMouseEnter={(e) => void (e.currentTarget as HTMLVideoElement).play()}
+            onMouseLeave={(e) => {
+              const v = e.currentTarget as HTMLVideoElement;
+              v.pause();
+              v.currentTime = 0;
+            }}
+            className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
+          />
         ) : (
           <img
             src={url}
@@ -196,6 +222,7 @@ export function FolderBrowser({
   const [modal, setModal] = useState<{ bib: string; photoIds: string[] } | null>(null);
   const [lightbox, setLightbox] = useState<{
     url: string;
+    mimeType: string | null;
     bibNumber: string | null;
     photoIds: string[];
     photoUrls: string[];
@@ -242,10 +269,7 @@ export function FolderBrowser({
   const priceMap = useMemo(
     () =>
       new Map<string, number>(
-        (allPhotos ?? []).map((p) => [
-          p.id,
-          p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib,
-        ]),
+        (allPhotos ?? []).map((p) => [p.id, p.price ?? pricePerBib]),
       ),
     [allPhotos, pricePerBib],
   );
@@ -256,7 +280,7 @@ export function FolderBrowser({
       return allSearchPhotos.map((p) => ({
         id: p.id,
         bibNumber: p.bibNumber,
-        price: p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib,
+        price: p.price ?? pricePerBib,
         isFuzzy: p.isFuzzy,
       }));
     }
@@ -288,12 +312,18 @@ export function FolderBrowser({
     () => new Map(urlData?.map((u) => [u.id, u.url]) ?? []),
     [urlData],
   );
+  const mimeTypeMap = useMemo(
+    () => new Map(urlData?.map((u) => [u.id, { mimeType: u.mimeType ?? null, filename: u.filename }]) ?? []),
+    [urlData],
+  );
 
   // Stable refs for lightbox handler (avoids stale closure without dep churn)
   const allPhotosRef = useRef(allPhotos);
   useEffect(() => { allPhotosRef.current = allPhotos; }, [allPhotos]);
   const visiblePhotosRef = useRef(visiblePhotos);
   useEffect(() => { visiblePhotosRef.current = visiblePhotos; }, [visiblePhotos]);
+  const mimeTypeMapRef = useRef(mimeTypeMap);
+  useEffect(() => { mimeTypeMapRef.current = mimeTypeMap; }, [mimeTypeMap]);
 
   // Stable handlers — same reference across renders, so memo'd tiles don't re-render
   const handleOpenLightbox = useCallback((photoId: string, bibNumber: string | null, url: string) => {
@@ -304,8 +334,10 @@ export function FolderBrowser({
         ? ap.filter((ph) => ph.bibNumber === bibNumber).map((ph) => ph.id)
         : [photoId];
     const idx = vp.findIndex((v) => v.id === photoId);
+    const mimeType = mimeTypeMapRef.current.get(photoId)?.mimeType ?? null;
     setLightbox({
       url,
+      mimeType,
       bibNumber,
       photoIds: sameBibIds,
       photoUrls: [url],
@@ -529,6 +561,8 @@ export function FolderBrowser({
                   price={priceMap.get(id) ?? pricePerBib}
                   inCart={isInCart(id)}
                   url={urlMap.get(id) ?? null}
+                  mimeType={mimeTypeMap.get(id)?.mimeType}
+                  filename={mimeTypeMap.get(id)?.filename}
                   onOpenLightbox={handleOpenLightbox}
                   onToggleCart={handleToggleCart}
                 />
@@ -578,10 +612,12 @@ export function FolderBrowser({
                     photoId={p.id}
                     bibNumber={p.bibNumber}
                     index={i}
-                    price={p.price !== null && p.price !== undefined ? Number(p.price) : pricePerBib}
+                    price={p.price ?? pricePerBib}
                     inCart={isInCart(p.id)}
                     isFuzzy={p.isFuzzy}
                     url={urlMap.get(p.id) ?? null}
+                    mimeType={mimeTypeMap.get(p.id)?.mimeType}
+                    filename={mimeTypeMap.get(p.id)?.filename}
                     onOpenLightbox={handleOpenLightbox}
                     onToggleCart={handleToggleCart}
                   />
@@ -621,6 +657,8 @@ export function FolderBrowser({
                     price={priceMap.get(p.id) ?? pricePerBib}
                     inCart={isInCart(p.id)}
                     url={urlMap.get(p.id) ?? null}
+                    mimeType={mimeTypeMap.get(p.id)?.mimeType}
+                    filename={mimeTypeMap.get(p.id)?.filename}
                     onOpenLightbox={handleOpenLightbox}
                     onToggleCart={handleToggleCart}
                   />
@@ -643,6 +681,7 @@ export function FolderBrowser({
       <Lightbox
         open={lightbox !== null}
         url={lightbox?.url ?? null}
+        mimeType={lightbox?.mimeType ?? null}
         onClose={() => setLightbox(null)}
         caption={
           lightbox && (

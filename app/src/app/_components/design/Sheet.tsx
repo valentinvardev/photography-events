@@ -62,7 +62,7 @@ export function Sheet({ open, onClose, children, position = "right", width = "44
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             onClick={onClose}
-            className="fixed inset-0 z-[200] bg-[color:var(--color-ink)]/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-[color:var(--color-ink)]/60"
           />
           <motion.div
             key="sheet"

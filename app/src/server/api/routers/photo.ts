@@ -7,6 +7,7 @@ import {
   deleteS3Objects,
   isS3Key,
 } from "~/lib/s3";
+import { isVideoMimeType } from "~/lib/video-processing";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -14,6 +15,11 @@ import {
 } from "~/server/api/trpc";
 
 const STORAGE_LIMIT_BYTES = 100 * 1024 * 1024 * 1024; // 100 GB
+
+const ACCEPTED_CONTENT_TYPES = z.string().refine(
+  (t) => t.startsWith("image/") || t.startsWith("video/"),
+  { message: "Solo se aceptan imágenes y videos" },
+);
 
 export const photoRouter = createTRPCRouter({
   // ─── Public ────────────────────────────────────────────────────────────────
@@ -24,11 +30,15 @@ export const photoRouter = createTRPCRouter({
       const photos = await ctx.db.photo.findMany({
         where: { collectionId: input.collectionId },
         orderBy: { order: "asc" },
-        select: { id: true, bibNumber: true, price: true },
+        select: { id: true, bibNumber: true, price: true, mimeType: true, filename: true },
+      });
+      const norm = (p: (typeof photos)[number]) => ({
+        ...p,
+        price: p.price !== null ? Number(p.price) : null,
       });
       return [
-        ...photos.filter((p) => !p.bibNumber),
-        ...photos.filter((p) => !!p.bibNumber),
+        ...photos.filter((p) => !p.bibNumber).map(norm),
+        ...photos.filter((p) => !!p.bibNumber).map(norm),
       ];
     }),
 
@@ -42,13 +52,23 @@ export const photoRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const q = input.bib.trim();
 
+      const select = {
+        id: true,
+        bibNumber: true,
+        price: true,
+        mimeType: true,
+        filename: true,
+        storageKey: true,
+        previewKey: true,
+      } as const;
+
       const exact = await ctx.db.photo.findMany({
         where: {
           collectionId: input.collectionId,
           bibNumber: { contains: q, mode: "insensitive" },
         },
         orderBy: { order: "asc" },
-        select: { id: true, bibNumber: true, price: true, storageKey: true, previewKey: true, filename: true },
+        select,
       });
 
       let fuzzy: typeof exact = [];
@@ -59,7 +79,7 @@ export const photoRouter = createTRPCRouter({
             bibNumber: { not: null },
             AND: [{ bibNumber: { not: q } }],
           },
-          select: { id: true, bibNumber: true, price: true, storageKey: true, previewKey: true, filename: true },
+          select,
         });
         fuzzy = candidates.filter((p) => {
           const n = p.bibNumber?.trim() ?? "";
@@ -72,6 +92,11 @@ export const photoRouter = createTRPCRouter({
         });
       }
 
+      const normPrice = (p: (typeof exact)[number]) => ({
+        ...p,
+        price: p.price !== null ? Number(p.price) : null,
+      });
+
       const groupByBib = (photos: typeof exact) => {
         const map = new Map<string, typeof exact>();
         for (const p of photos) {
@@ -79,21 +104,22 @@ export const photoRouter = createTRPCRouter({
           if (!map.has(key)) map.set(key, []);
           map.get(key)!.push(p);
         }
-        return Array.from(map.entries()).map(([bib, photos]) => ({ bib, photos }));
+        return Array.from(map.entries()).map(([bib, photos]) => ({
+          bib,
+          photos: photos.map(normPrice),
+        }));
       };
 
-      return {
-        exact: groupByBib(exact),
-        fuzzy: groupByBib(fuzzy),
-      };
+      return { exact: groupByBib(exact), fuzzy: groupByBib(fuzzy) };
     }),
 
+  /** Returns signed preview URLs + mimeType for a list of photo IDs. */
   getPreviewUrls: publicProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .query(async ({ ctx, input }) => {
       const photos = await ctx.db.photo.findMany({
         where: { id: { in: input.ids } },
-        select: { id: true, storageKey: true, previewKey: true },
+        select: { id: true, storageKey: true, previewKey: true, mimeType: true, filename: true },
       });
       const results = await Promise.all(
         photos.map(async (p) => {
@@ -101,20 +127,24 @@ export const photoRouter = createTRPCRouter({
           const url = isS3Key(key)
             ? await createS3DownloadUrl(key, 3600)
             : await createSignedUrl(key, 3600);
-          return { id: p.id, url };
+          return { id: p.id, url, mimeType: p.mimeType, filename: p.filename };
         }),
       );
-      return results.filter((r): r is { id: string; url: string } => r.url !== null);
+      return results.filter(
+        (r): r is { id: string; url: string; mimeType: string | null; filename: string } =>
+          r.url !== null,
+      );
     }),
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
 
+  /** S3 presigned PUT URL — accepts both images and videos. */
   getS3UploadUrl: protectedProcedure
     .input(
       z.object({
         collectionId: z.string(),
         filename: z.string(),
-        contentType: z.string().startsWith("image/"),
+        contentType: ACCEPTED_CONTENT_TYPES,
       }),
     )
     .mutation(async ({ input }) => {
@@ -124,6 +154,7 @@ export const photoRouter = createTRPCRouter({
       return { uploadUrl: url, key };
     }),
 
+  /** Register uploaded files in DB and kick off background processing. */
   bulkAdd: protectedProcedure
     .input(
       z.object({
@@ -132,6 +163,7 @@ export const photoRouter = createTRPCRouter({
           z.object({
             storageKey: z.string(),
             filename: z.string(),
+            mimeType: z.string().optional(),
             bibNumber: z.string().optional(),
             fileSize: z.number().optional(),
             width: z.number().optional(),
@@ -149,30 +181,37 @@ export const photoRouter = createTRPCRouter({
               collectionId: input.collectionId,
               storageKey: p.storageKey,
               filename: p.filename,
+              mimeType: p.mimeType ?? null,
               bibNumber: p.bibNumber ?? null,
               fileSize: p.fileSize,
               width: p.width,
               height: p.height,
               order: count + i,
             },
-            select: { id: true },
+            select: { id: true, mimeType: true },
           }),
         ),
       );
-      const ids = created.map((c) => c.id);
+
+      const ids = created.map((c) => ({ id: c.id, isVideo: isVideoMimeType(c.mimeType) }));
 
       void (async () => {
         const { runOcr, runWatermark, runFaceIndex } = await import("~/lib/photo-processing");
+        const { runVideoWatermark } = await import("~/lib/video-processing");
         for (let i = 0; i < ids.length; i++) {
-          const photoId = ids[i]!;
+          const { id: photoId, isVideo } = ids[i]!;
           await new Promise((r) => setTimeout(r, i * 400));
-          void runOcr(photoId);
-          void runWatermark(photoId);
-          void runFaceIndex(photoId, input.collectionId);
+          if (isVideo) {
+            void runVideoWatermark(photoId);
+          } else {
+            void runOcr(photoId);
+            void runWatermark(photoId);
+            void runFaceIndex(photoId, input.collectionId);
+          }
         }
       })();
 
-      return { ids };
+      return { ids: ids.map((x) => x.id) };
     }),
 
   getStorageUsage: protectedProcedure.query(async ({ ctx }) => {
@@ -190,9 +229,7 @@ export const photoRouter = createTRPCRouter({
 
       const s3Keys: string[] = [];
       const supabaseKeys: string[] = [];
-
-      const allKeys = [photo.storageKey, photo.previewKey].filter(Boolean) as string[];
-      for (const k of allKeys) {
+      for (const k of [photo.storageKey, photo.previewKey].filter(Boolean) as string[]) {
         if (isS3Key(k)) s3Keys.push(k);
         else if (!k.startsWith("http")) supabaseKeys.push(k);
       }
@@ -213,10 +250,8 @@ export const photoRouter = createTRPCRouter({
 
       const s3Keys: string[] = [];
       const supabaseKeys: string[] = [];
-
       for (const p of photos) {
-        const allKeys = [p.storageKey, p.previewKey].filter(Boolean) as string[];
-        for (const k of allKeys) {
+        for (const k of [p.storageKey, p.previewKey].filter(Boolean) as string[]) {
           if (isS3Key(k)) s3Keys.push(k);
           else if (!k.startsWith("http")) supabaseKeys.push(k);
         }

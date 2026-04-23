@@ -7,6 +7,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   url: string | null;
+  mimeType?: string | null;
   caption?: React.ReactNode;
   onPrev?: () => void;
   onNext?: () => void;
@@ -15,7 +16,8 @@ type Props = {
   total?: number;
 };
 
-export function Lightbox({ open, onClose, url, caption, onPrev, onNext, toolbar, index, total }: Props) {
+export function Lightbox({ open, onClose, url, mimeType, caption, onPrev, onNext, toolbar, index, total }: Props) {
+  const isVideo = !!mimeType?.startsWith("video/");
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -69,17 +71,29 @@ export function Lightbox({ open, onClose, url, caption, onPrev, onNext, toolbar,
 
           {/* image */}
           <div className="relative flex-1 flex items-center justify-center px-4 md:px-16 py-2 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <motion.img
-              key={url}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              src={url}
-              alt=""
-              className="max-w-full max-h-full object-contain select-none"
-              style={{ maxHeight: "calc(100vh - 200px)" }}
-              draggable={false}
-            />
+            {isVideo ? (
+              <video
+                key={url}
+                src={url ?? undefined}
+                controls
+                autoPlay
+                playsInline
+                className="max-w-full max-h-full object-contain select-none"
+                style={{ maxHeight: "calc(100vh - 200px)" }}
+              />
+            ) : (
+              <motion.img
+                key={url}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                src={url ?? undefined}
+                alt=""
+                className="max-w-full max-h-full object-contain select-none"
+                style={{ maxHeight: "calc(100vh - 200px)" }}
+                draggable={false}
+              />
+            )}
 
             {onPrev && (
               <button
