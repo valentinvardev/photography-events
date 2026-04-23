@@ -47,7 +47,14 @@ async function getWatermarkTempPath(): Promise<string | null> {
 
 function runFfmpeg(cmd: ffmpeg.FfmpegCommand): Promise<void> {
   return new Promise((resolve, reject) =>
-    cmd.on("end", () => resolve()).on("error", reject).run()
+    cmd
+      .on("end", () => resolve())
+      .on("error", (err, stdout, stderr) => {
+        console.error("[VideoWatermark] ffmpeg error:", err.message);
+        console.error("[VideoWatermark] stderr:", stderr);
+        reject(err);
+      })
+      .run()
   );
 }
 
@@ -68,7 +75,6 @@ export async function runVideoWatermark(photoId: string): Promise<{ previewKey: 
     let cmd = ffmpeg(tmpIn);
 
     if (wmPath) {
-      // PNG watermark overlaid centered, scaled to 30% of video width, repeated diagonally
       cmd = cmd
         .input(wmPath)
         .complexFilter([
@@ -78,14 +84,8 @@ export async function runVideoWatermark(photoId: string): Promise<{ previewKey: 
         ], "out")
         .outputOptions(["-map", "0:a?"]);
     } else {
-      // Fallback: baked-in text watermark
-      cmd = cmd.videoFilter([
-        "scale='min(1280,iw)':-2",
-        "drawtext=text='PREVIEW':" +
-          "fontsize=h/8:fontcolor=white@0.45:" +
-          "x=(w-text_w)/2:y=(h-text_h)/2:" +
-          "shadowcolor=black@0.35:shadowx=2:shadowy=2",
-      ]);
+      // No watermark image — just transcode to H.264 so the browser can play it
+      cmd = cmd.videoFilter("scale='min(1280,iw)':-2");
     }
 
     cmd.outputOptions([
