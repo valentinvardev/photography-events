@@ -8,9 +8,16 @@ import { StorageBar } from "./StorageBar";
 type UploadStatus = "pending" | "uploading" | "done" | "error";
 type OcrStatus = "idle" | "queued" | "processing" | "found" | "not-found" | "error";
 
+const VIDEO_RE = /^video\//;
+
+function isVideoFile(file: File) {
+  return VIDEO_RE.test(file.type) || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(file.name);
+}
+
 type FileEntry = {
   id: string;
   file: File;
+  isVideo: boolean;
   status: UploadStatus;
   previewUrl: string;
   errorMsg?: string;
@@ -90,7 +97,15 @@ function FileRow({ entry }: { entry: FileEntry }) {
       }}
     >
       <div className="w-9 h-9 overflow-hidden flex-shrink-0 relative bg-[color:var(--color-grey-100)]">
-        <img src={entry.previewUrl} alt={entry.file.name} className="w-full h-full object-cover" />
+        {entry.isVideo ? (
+          <div className="w-full h-full flex items-center justify-center bg-[color:var(--color-grey-200)]">
+            <svg className="w-4 h-4 text-[color:var(--color-grey-500)]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        ) : (
+          <img src={entry.previewUrl} alt={entry.file.name} className="w-full h-full object-cover" />
+        )}
         {entry.status === "uploading" && (
           <div className="absolute inset-0 animate-pulse bg-[color:var(--color-ink)]/10" />
         )}
@@ -105,7 +120,7 @@ function FileRow({ entry }: { entry: FileEntry }) {
               : "var(--color-grey-400)",
           }}>
             {entry.status === "uploading" ? "Subiendo…"
-              : entry.status === "done" ? "Subida"
+              : entry.status === "done" ? (entry.isVideo ? "Video subido" : "Subida")
               : entry.status === "error" ? (entry.errorMsg ?? "Error")
               : "En cola"}
           </p>
@@ -182,6 +197,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
     const newEntries: FileEntry[] = validFiles.map((file, i) => ({
       id: `${Date.now()}-${i}`,
       file,
+      isVideo: isVideoFile(file),
       status: "pending",
       previewUrl: URL.createObjectURL(file),
       visible: false,
@@ -194,19 +210,20 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
       setTimeout(() => updateEntry(id, { visible: true }), i * 60);
     }
 
-    type UploadResult = { storageKey: string; filename: string; fileSize: number; entryId: string };
+    type UploadResult = { storageKey: string; filename: string; mimeType: string; fileSize: number; entryId: string; isVideo: boolean };
 
     const uploadOne = async (entry: FileEntry): Promise<UploadResult | null> => {
       updateEntry(entry.id, { status: "uploading" });
       try {
+        const contentType = entry.file.type || (entry.isVideo ? "video/mp4" : "image/jpeg");
         const { uploadUrl, key } = await getS3UploadUrl.mutateAsync({
           collectionId,
           filename: entry.file.name,
-          contentType: entry.file.type || "image/jpeg",
+          contentType,
         });
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { "Content-Type": entry.file.type || "image/jpeg" },
+          headers: { "Content-Type": contentType },
           body: entry.file,
         });
         if (!uploadRes.ok) {
@@ -214,7 +231,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
           return null;
         }
         updateEntry(entry.id, { status: "done" });
-        return { storageKey: key, filename: entry.file.name, fileSize: entry.file.size, entryId: entry.id };
+        return { storageKey: key, filename: entry.file.name, mimeType: contentType, fileSize: entry.file.size, entryId: entry.id, isVideo: entry.isVideo };
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error de red.";
         updateEntry(entry.id, { status: "error", errorMsg: msg });
@@ -232,13 +249,21 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
 
       void bulkAdd.mutateAsync({
         collectionId,
-        photos: chunkUploaded.map(({ storageKey, filename, fileSize }) => ({ storageKey, filename, fileSize })),
+        photos: chunkUploaded.map(({ storageKey, filename, mimeType, fileSize }) => ({
+          storageKey,
+          filename,
+          mimeType,
+          fileSize,
+        })),
       }).then((result) => {
         if (!result?.ids) return;
         for (let j = 0; j < result.ids.length; j++) {
           const photoId = result.ids[j];
-          const entryId = chunkUploaded[j]?.entryId;
-          if (photoId && entryId) pendingPolls.push({ entryId, photoId });
+          const uploaded = chunkUploaded[j];
+          // Only poll OCR for images — videos don't have bib numbers
+          if (photoId && uploaded?.entryId && !uploaded.isVideo) {
+            pendingPolls.push({ entryId: uploaded.entryId, photoId });
+          }
         }
       });
     }
@@ -286,19 +311,19 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-600)]">
-          {isUploading ? "Subiendo fotos…" : "Arrastrá fotos aquí"}
+          {isUploading ? "Subiendo archivos…" : "Arrastrá fotos o videos aquí"}
         </p>
         <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)] mt-1">
           {isUploading
-            ? `${doneCount} de ${entries.length} subidas`
-            : "o clic para seleccionar"}
+            ? `${doneCount} de ${entries.length} subidos`
+            : "JPG, PNG, MP4, MOV y más"}
         </p>
       </div>
 
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         multiple
         className="hidden"
         onChange={(e) => { if (e.target.files) void handleFiles(e.target.files); }}
