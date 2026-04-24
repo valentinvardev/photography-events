@@ -46,16 +46,17 @@ async function getWatermarkTempPath(): Promise<string | null> {
 }
 
 function runFfmpeg(cmd: ffmpeg.FfmpegCommand): Promise<void> {
-  return new Promise((resolve, reject) =>
-    cmd
-      .on("end", () => resolve())
+  return new Promise((resolve, reject) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = cmd as any;
+    c.on("end", () => resolve())
       .on("error", (err: Error, _stdout: string, stderr: string) => {
         console.error("[VideoWatermark] ffmpeg error:", err.message);
         console.error("[VideoWatermark] stderr:", stderr);
         reject(err);
       })
-      .run()
-  );
+      .run();
+  });
 }
 
 // ── Core function ─────────────────────────────────────────────────────────────
