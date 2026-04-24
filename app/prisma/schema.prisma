@@ -89,6 +89,9 @@ model Collection {
     createdAt        DateTime  @default(now())
     updatedAt        DateTime  @updatedAt
 
+    categoryId  String?
+    category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
     photos      Photo[]
     purchases   Purchase[]
     faceRecords FaceRecord[]
@@ -96,6 +99,7 @@ model Collection {
     @@index([slug])
     @@index([isPublished])
     @@index([eventDate])
+    @@index([categoryId])
 }
 
 // Photos belong directly to a Collection; bibNumber is OCR-detected from filename/subfolder
@@ -198,6 +202,26 @@ model FaceRecord {
 
     @@index([collectionId])
     @@index([photoId])
+}
+
+// ─── Categories ──────────────────────────────────────────────────────────────
+
+model Category {
+    id          String   @id @default(cuid())
+    name        String
+    slug        String   @unique
+    description String?  @db.Text
+    coverUrl    String?
+    buttonText  String?  // CTA button label (e.g. "Ver eventos")
+    buttonHref  String?  // CTA button destination
+    order       Int      @default(0)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    collections Collection[]
+
+    @@index([slug])
+    @@index([order])
 }
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

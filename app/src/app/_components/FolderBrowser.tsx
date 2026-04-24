@@ -226,6 +226,7 @@ export function FolderBrowser({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [galleryPage, setGalleryPage] = useState(0);
+  const [galleryFilter, setGalleryFilter] = useState<"all" | "bib" | "no-bib">("all");
   const [faceActive, setFaceActive] = useState(false);
   const [faceStatus, setFaceStatus] = useState<
     "idle" | "uploading" | "done" | "no-face" | "error"
@@ -321,14 +322,19 @@ export function FolderBrowser({
         })),
       );
     }
+    const base = allPhotos ?? [];
+    const filtered =
+      galleryFilter === "bib" ? base.filter((p) => p.bibNumber) :
+      galleryFilter === "no-bib" ? base.filter((p) => !p.bibNumber) :
+      base;
     const start = galleryPage * PAGE_SIZE;
-    return (allPhotos ?? []).slice(start, start + PAGE_SIZE).map((p) => ({
+    return filtered.slice(start, start + PAGE_SIZE).map((p) => ({
       id: p.id,
       bibNumber: p.bibNumber,
       price: priceMap.get(p.id) ?? pricePerBib,
       isFuzzy: false as const,
     }));
-  }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib, galleryPage, PAGE_SIZE]);
+  }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib, galleryPage, PAGE_SIZE, galleryFilter]);
 
   // Single batch URL query — converts N per-tile queries into 1 request
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
@@ -677,9 +683,26 @@ export function FolderBrowser({
           ) : allPhotos && allPhotos.length > 0 ? (
             <>
               <SectionLabel label="Fotos del evento." />
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-8">
-                {String(allPhotos.length).padStart(3, "0")} fotografías · clic para previsualizar
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                  {String(allPhotos.length).padStart(3, "0")} fotografías · clic para previsualizar
+                </p>
+                <div className="flex items-center gap-px">
+                  {(["all", "bib", "no-bib"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => { setGalleryFilter(f); setGalleryPage(0); }}
+                      className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.16em] border transition-colors ${
+                        galleryFilter === f
+                          ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)]"
+                          : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-500)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)]"
+                      }`}
+                    >
+                      {f === "all" ? "Todas" : f === "bib" ? "Con dorsal" : "Sin dorsal"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className={GRID}>
                 {visiblePhotos.map((p, i) => (
                   <PhotoTile

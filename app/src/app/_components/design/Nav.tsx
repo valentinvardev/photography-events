@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useCursorTrigger } from "./Cursor";
 import { MobileNav } from "~/app/_components/MobileNav";
 
 export function Nav() {
@@ -28,9 +27,6 @@ export function Nav() {
     return () => clearInterval(id);
   }, []);
 
-  const photos = useCursorTrigger("cta", "buscar");
-  const link = useCursorTrigger("cta", "ir");
-
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-[background,backdrop-filter,border-color,color] duration-500 ${
@@ -41,7 +37,7 @@ export function Nav() {
     >
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-6 px-6 md:px-10 h-16">
         {/* wordmark */}
-        <Link href="/" {...link} className="flex items-baseline gap-3">
+        <Link href="/" className="flex items-baseline gap-3">
           <span className={`font-display italic text-[22px] leading-none tracking-tight transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}>
             Ivana Maritano
           </span>
@@ -59,7 +55,6 @@ export function Nav() {
           {/* Desktop-only links */}
           <Link
             href="#eventos"
-            {...link}
             className={`hidden md:inline-block link-draw font-mono text-[11px] uppercase tracking-[0.22em] transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}
           >
             Buscá tu foto
@@ -77,7 +72,6 @@ export function Nav() {
           </a>
           <Link
             href="#eventos"
-            {...photos}
             className={`hidden md:inline-flex group relative items-center gap-2 px-4 py-2 border font-mono text-[10px] uppercase tracking-[0.22em] overflow-hidden transition-all duration-500 ${
               scrolled
                 ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)]"

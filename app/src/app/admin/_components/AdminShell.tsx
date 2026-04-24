@@ -83,6 +83,7 @@ export function AdminShell({
         </p>
         <NavItem href="/admin" label="Dashboard" onNavigate={close} />
         <NavItem href="/admin/colecciones" label="Eventos" onNavigate={close} />
+        <NavItem href="/admin/categorias" label="Categorías" onNavigate={close} />
         <NavItem href="/admin/ventas" label="Ventas" onNavigate={close} />
         <NavItem href="/admin/reconocimiento" label="Reconocimiento" onNavigate={close} />
         <NavItem href="/admin/qr" label="Códigos QR" onNavigate={close} />

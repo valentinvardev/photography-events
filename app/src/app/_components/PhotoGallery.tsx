@@ -4,7 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 
-type Photo = { id: string; filename: string; url: string };
+type Photo = { id: string; filename: string; url: string; mimeType?: string | null };
+
+function isVideoItem(photo: Photo) {
+  if (photo.mimeType) return photo.mimeType.startsWith("video/");
+  return /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(photo.filename);
+}
 
 type Props = {
   token: string;
@@ -316,12 +321,25 @@ export function PhotoGallery({
                   <span className="pointer-events-none absolute bottom-0 left-0 w-3 h-3 border-l border-b border-[color:var(--color-paper)] z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <span className="pointer-events-none absolute bottom-0 right-0 w-3 h-3 border-r border-b border-[color:var(--color-paper)] z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                  <img
-                    src={photo.url}
-                    alt={photo.filename}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                  />
+                  {isVideoItem(photo) ? (
+                    <video
+                      src={photo.url}
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      onMouseEnter={(e) => void (e.currentTarget as HTMLVideoElement).play()}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLVideoElement).pause(); (e.currentTarget as HTMLVideoElement).currentTime = 0; }}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <img
+                      src={photo.url}
+                      alt={photo.filename}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                  )}
 
                   {!selectMode && (
                     <div
@@ -450,17 +468,29 @@ export function PhotoGallery({
               className="relative flex-1 flex items-center justify-center px-4 md:px-16 py-2 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <motion.img
-                key={currentPhoto.url}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                src={currentPhoto.url}
-                alt={currentPhoto.filename}
-                className="max-w-full max-h-full object-contain select-none"
-                style={{ maxHeight: "calc(100vh - 220px)" }}
-                draggable={false}
-              />
+              {isVideoItem(currentPhoto) ? (
+                <video
+                  key={currentPhoto.url}
+                  src={currentPhoto.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-w-full max-h-full object-contain"
+                  style={{ maxHeight: "calc(100vh - 220px)" }}
+                />
+              ) : (
+                <motion.img
+                  key={currentPhoto.url}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  src={currentPhoto.url}
+                  alt={currentPhoto.filename}
+                  className="max-w-full max-h-full object-contain select-none"
+                  style={{ maxHeight: "calc(100vh - 220px)" }}
+                  draggable={false}
+                />
+              )}
 
               {photos.length > 1 && (
                 <>

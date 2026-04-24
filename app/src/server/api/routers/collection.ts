@@ -147,6 +147,7 @@ export const collectionRouter = createTRPCRouter({
         discountTiers: z.array(z.object({ minQty: z.number().int().positive(), priceEach: z.number().min(0) })).optional().nullable(),
         isPublished: z.boolean().optional(),
         eventDate: z.string().optional().nullable(),
+        categoryId: z.string().optional().nullable(),
       }),
     )
     .mutation(({ ctx, input }) => {

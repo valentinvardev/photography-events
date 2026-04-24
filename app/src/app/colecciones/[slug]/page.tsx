@@ -71,22 +71,6 @@ export default async function CollectionPage({
           bannerFocalY={collection.bannerFocalY ?? 50}
         />
 
-        {/* Photo banner strip */}
-        {bannerSrc && (
-          <div
-            className="relative w-full overflow-hidden bg-[color:var(--color-grey-900)]"
-            style={{ height: "clamp(100px, 15vh, 190px)" }}
-          >
-            <img
-              src={bannerSrc}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-75"
-              style={{ objectPosition: `50% ${collection.bannerFocalY ?? 50}%` }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--color-ink)]/50 via-transparent to-[color:var(--color-ink)]/20" />
-          </div>
-        )}
-
         {/* Gallery + search */}
         <FolderBrowser collectionId={collection.id} pricePerBib={price} />
 

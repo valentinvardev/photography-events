@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useCursorTrigger } from "./design/Cursor";
-
 export type EventCardCol = {
   title: string;
   description?: string | null;
@@ -36,13 +34,9 @@ export function EventCard({
   const objectPosition = `center ${Math.round(focalY * 100)}%`;
   const cover = col.bannerUrl ?? col.coverUrl;
   const num = String(index + 1).padStart(2, "0");
-  const view = useCursorTrigger("view", "ver");
 
   const card = (
-    <article
-      {...view}
-      className="group relative block"
-    >
+    <article className="group relative block">
       {/* contact-sheet number + caption row */}
       <div className="flex items-baseline justify-between mb-3 px-1">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">

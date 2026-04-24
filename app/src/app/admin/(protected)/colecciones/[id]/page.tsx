@@ -7,6 +7,7 @@ import { CollectionActions } from "~/app/_components/admin/CollectionActions";
 import { FaceReindexButton } from "~/app/_components/admin/FaceReindexButton";
 import { WatermarkAllButton } from "~/app/_components/admin/WatermarkAllButton";
 import { PricingPanel } from "~/app/_components/admin/PricingPanel";
+import { CategoryAssign } from "~/app/_components/admin/CategoryAssign";
 import { parseTiers } from "~/lib/pricing";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
@@ -24,7 +25,10 @@ export default async function EditCollectionPage({
   const { page: pageParam, q } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const collection = await api.collection.adminGetById({ id });
+  const [collection, allCategories] = await Promise.all([
+    api.collection.adminGetById({ id }),
+    api.category.adminList(),
+  ]);
   if (!collection) notFound();
 
   const { db } = await import("~/server/db");
@@ -162,7 +166,7 @@ export default async function EditCollectionPage({
         </div>
       </div>
 
-      {/* Three-column layout: upload / pricing / gallery */}
+      {/* Three-column layout: upload / pricing / category */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
         <div className="bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
@@ -179,6 +183,16 @@ export default async function EditCollectionPage({
             initialPricePerBib={Number(collection.pricePerBib ?? 0)}
             initialPackPrice={collection.packPrice !== null && collection.packPrice !== undefined ? Number(collection.packPrice) : null}
             initialTiers={parseTiers(collection.discountTiers)}
+          />
+        </div>
+        <div className="bg-[color:var(--color-paper)] p-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+            Categoría
+          </p>
+          <CategoryAssign
+            collectionId={id}
+            initialCategoryId={collection.categoryId ?? null}
+            categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
           />
         </div>
       </div>

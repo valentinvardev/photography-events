@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { api } from "~/trpc/server";
 import { EventCard } from "~/app/_components/EventCard";
+import { CategoryCard } from "~/app/_components/CategoryCard";
 import { Nav } from "~/app/_components/design/Nav";
 import { Footer } from "~/app/_components/design/Footer";
 import { Hero } from "~/app/_components/design/Hero";
@@ -9,7 +10,11 @@ import { Reveal } from "~/app/_components/design/Reveal";
 import { MagneticButton } from "~/app/_components/design/MagneticButton";
 
 export default async function HomePage() {
-  const raw = await api.collection.list();
+  const [rawCollections, categories] = await Promise.all([
+    api.collection.list(),
+    api.category.list(),
+  ]);
+  const raw = rawCollections;
   const collections = raw.map((c) => ({
     id: c.id,
     title: c.title,
@@ -72,6 +77,35 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {/* ════════ CATEGORIES ════════ */}
+      {categories.length > 0 && (
+        <section id="categorias" className="px-6 md:px-10 pt-0 pb-32 border-t border-[color:var(--color-grey-300)]">
+          <div className="max-w-[1600px] mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-16 md:mb-24 pt-16">
+              <Reveal as="h2">
+                <span className="font-display italic font-light leading-[0.92] tracking-[-0.03em] block"
+                      style={{ fontSize: "clamp(48px, 9vw, 140px)" }}>
+                  Categorías.
+                </span>
+              </Reveal>
+              <Reveal delay={0.1}>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-grey-700)] md:text-right">
+                  {String(categories.length).padStart(2, "0")} categorías
+                </p>
+              </Reveal>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-16">
+              {categories.map((cat, i) => (
+                <Reveal key={cat.id} variant="lift" delay={i * 0.06}>
+                  <CategoryCard cat={cat} index={i} />
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ════════ BIG CTA ════════ */}
       <section data-cursor="dark" className="relative px-6 md:px-10 py-40 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] overflow-hidden">

@@ -57,14 +57,6 @@ html, body {
   font-feature-settings: "ss01", "kern";
 }
 
-/* hide native cursor on desktop where custom cursor takes over */
-@media (hover: hover) and (pointer: fine) {
-  body.has-custom-cursor,
-  body.has-custom-cursor * {
-    cursor: none !important;
-  }
-}
-
 /* selection */
 ::selection {
   background: var(--color-ink);
@@ -127,15 +119,6 @@ html, body {
 .hairline-thick {
   height: 2px;
   background: var(--color-ink);
-}
-
-/* ─── custom cursor ─── */
-.cursor-root {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 9999;
 }
 
 /* ─── reveal animations ─── */

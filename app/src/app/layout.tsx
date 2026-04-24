@@ -4,7 +4,6 @@ import { type Metadata } from "next";
 import { Barlow_Condensed, Instrument_Sans, Fragment_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
-import { Cursor } from "~/app/_components/design/Cursor";
 import { Grain } from "~/app/_components/design/Grain";
 
 export const metadata: Metadata = {
@@ -48,7 +47,6 @@ export default function RootLayout({
           {children}
         </TRPCReactProvider>
         <Grain />
-        <Cursor />
       </body>
     </html>
   );

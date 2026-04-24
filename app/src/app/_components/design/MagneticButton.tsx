@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRef, type ReactNode } from "react";
-import { useCursorTrigger } from "./Cursor";
 
 type Props = {
   href?: string;
@@ -24,7 +23,6 @@ export function MagneticButton({
   size = "md",
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const cursor = useCursorTrigger("cta", cursorLabel);
 
   const handleMove = (e: React.MouseEvent) => {
     if (!ref.current) return;
@@ -36,7 +34,6 @@ export function MagneticButton({
 
   const reset = () => {
     if (ref.current) ref.current.style.transform = "";
-    cursor.onMouseLeave();
   };
 
   const sizes = {
@@ -58,7 +55,6 @@ export function MagneticButton({
       ref={ref}
       onMouseMove={handleMove}
       onMouseLeave={reset}
-      onMouseEnter={cursor.onMouseEnter}
       style={{ transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)" }}
       className={`group relative inline-flex items-center gap-3 font-mono uppercase tracking-[0.2em] transition-colors duration-300 ${sizes[size]} ${variants[variant]} ${className}`}
     >
