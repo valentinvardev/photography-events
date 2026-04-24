@@ -50,4 +50,12 @@ export const categoryRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.category.delete({ where: { id: input.id } });
     }),
+
+  reorder: protectedProcedure
+    .input(z.array(z.object({ id: z.string(), order: z.number().int() })))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.$transaction(
+        input.map(({ id, order }) => ctx.db.category.update({ where: { id }, data: { order } })),
+      );
+    }),
 });

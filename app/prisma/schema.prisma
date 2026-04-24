@@ -76,6 +76,7 @@ model Collection {
     slug             String    @unique
     eventDate        DateTime?
     location         String?
+    order            Int       @default(0)
     pricePerBib      Decimal   @default(0) @db.Decimal(10, 2)
     packPrice        Decimal?  @db.Decimal(10, 2) // Fixed price for ALL photos found in search
     discountTiers    Json?     // [{minQty: number, priceEach: number}] sorted by minQty asc

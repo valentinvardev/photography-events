@@ -21,7 +21,7 @@ export const collectionRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
     const cols = await ctx.db.collection.findMany({
       where: { isPublished: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       include: { _count: { select: { photos: true } } },
     });
     return Promise.all(
@@ -71,7 +71,7 @@ export const collectionRouter = createTRPCRouter({
 
   adminList: protectedProcedure.query(async ({ ctx }) => {
     const cols = await ctx.db.collection.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       include: { _count: { select: { photos: true } } },
     });
     return Promise.all(
@@ -173,6 +173,14 @@ export const collectionRouter = createTRPCRouter({
       await ctx.db.purchase.deleteMany({ where: { collectionId: id } });
       await ctx.db.photo.deleteMany({ where: { collectionId: id } });
       return ctx.db.collection.delete({ where: { id } });
+    }),
+
+  reorder: protectedProcedure
+    .input(z.array(z.object({ id: z.string(), order: z.number().int() })))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.$transaction(
+        input.map(({ id, order }) => ctx.db.collection.update({ where: { id }, data: { order } })),
+      );
     }),
 
   togglePublish: protectedProcedure

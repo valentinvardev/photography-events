@@ -1,8 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { api } from "~/trpc/react";
 import { ImageUpload } from "~/app/_components/admin/ImageUpload";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type Category = {
   id: string;
@@ -165,25 +181,189 @@ function useNewKey() {
   return ref.current;
 }
 
-export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
-  const utils = api.useUtils();
-  const { data: categories = initialCategories } = api.category.adminList.useQuery(undefined, {
-    initialData: initialCategories,
+function CategoryRow({
+  cat,
+  onEdit,
+  onDelete,
+  editingId,
+  update,
+  del,
+}: {
+  cat: Category;
+  onEdit: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+  editingId: string | null;
+  update: ReturnType<typeof api.category.update.useMutation>;
+  del: ReturnType<typeof api.category.delete.useMutation>;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: cat.id,
+    disabled: editingId !== null,
   });
 
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      {editingId === cat.id ? (
+        <div className="bg-[color:var(--color-paper)] p-4 border-b border-[color:var(--color-grey-300)]">
+          <CategoryForm
+            initial={{
+              name: cat.name,
+              slug: cat.slug,
+              description: cat.description ?? "",
+              coverUrl: cat.coverUrl ?? "",
+              buttonText: cat.buttonText ?? "",
+              buttonHref: cat.buttonHref ?? "",
+              order: cat.order,
+            }}
+            storageKey={cat.id}
+            onSave={(data) =>
+              update.mutate({
+                id: cat.id,
+                data: {
+                  ...data,
+                  description: data.description || null,
+                  coverUrl: data.coverUrl || null,
+                  buttonText: data.buttonText || null,
+                  buttonHref: data.buttonHref || null,
+                },
+              })
+            }
+            onCancel={() => onEdit("")}
+            saving={update.isPending}
+          />
+        </div>
+      ) : (
+        <div className="bg-[color:var(--color-paper)] px-5 py-4 flex items-center gap-3 border-b border-[color:var(--color-grey-300)] last:border-b-0">
+          {/* Drag handle */}
+          <button
+            {...listeners}
+            {...attributes}
+            className="shrink-0 flex items-center justify-center w-6 h-8 text-[color:var(--color-grey-400)] hover:text-[color:var(--color-grey-600)] cursor-grab active:cursor-grabbing touch-none"
+            aria-label="Arrastrar para reordenar"
+            tabIndex={-1}
+            type="button"
+          >
+            <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+              <circle cx="2.5" cy="2" r="1.5" />
+              <circle cx="7.5" cy="2" r="1.5" />
+              <circle cx="2.5" cy="7" r="1.5" />
+              <circle cx="7.5" cy="7" r="1.5" />
+              <circle cx="2.5" cy="12" r="1.5" />
+              <circle cx="7.5" cy="12" r="1.5" />
+            </svg>
+          </button>
+
+          {cat.coverUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cat.coverUrl}
+              alt={cat.name}
+              className="w-12 h-12 object-cover shrink-0 border border-[color:var(--color-grey-200)]"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-display italic text-[20px] leading-tight text-[color:var(--color-ink)]">
+              {cat.name}
+            </p>
+            <div className="flex items-center gap-4 mt-0.5">
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)]">
+                /{cat.slug}
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)]">
+                {cat._count.collections} evento{cat._count.collections !== 1 ? "s" : ""}
+              </span>
+            </div>
+            {cat.description && (
+              <p className="font-mono text-[10px] text-[color:var(--color-grey-600)] mt-1 truncate">
+                {cat.description}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => onEdit(cat.id)}
+              className="px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => onDelete(cat.id, cat.name)}
+              className="px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)] hover:border-red-400 hover:text-red-600 transition-colors"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
+  const utils = api.useUtils();
+  const { data: serverCategories = initialCategories } = api.category.adminList.useQuery(
+    undefined,
+    { initialData: initialCategories },
+  );
+
+  const [items, setItems] = useState(serverCategories);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const newKey = useNewKey();
 
   const create = api.category.create.useMutation({
-    onSuccess: () => { void utils.category.adminList.invalidate(); setCreating(false); },
+    onSuccess: (newCat) => {
+      void utils.category.adminList.invalidate();
+      setItems((prev) => [...prev, { ...newCat, _count: { collections: 0 } }]);
+      setCreating(false);
+    },
   });
   const update = api.category.update.useMutation({
     onSuccess: () => { void utils.category.adminList.invalidate(); setEditingId(null); },
   });
   const del = api.category.delete.useMutation({
-    onSuccess: () => void utils.category.adminList.invalidate(),
+    onSuccess: (_, vars) => {
+      void utils.category.adminList.invalidate();
+      setItems((prev) => prev.filter((c) => c.id !== vars.id));
+    },
   });
+  const reorder = api.category.reorder.useMutation({
+    onSettled: () => setSavingOrder(false),
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      setItems((prev) => {
+        const oldIndex = prev.findIndex((i) => i.id === active.id);
+        const newIndex = prev.findIndex((i) => i.id === over.id);
+        const next = arrayMove(prev, oldIndex, newIndex);
+        setSavingOrder(true);
+        reorder.mutate(next.map((item, idx) => ({ id: item.id, order: idx })));
+        return next;
+      });
+    },
+    [reorder],
+  );
+
+  const handleEdit = (id: string) => setEditingId(id || null);
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`¿Eliminar "${name}"?`)) del.mutate({ id });
+  };
 
   return (
     <div>
@@ -196,14 +376,21 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
             Categorías
           </h1>
         </div>
-        {!creating && (
-          <button
-            onClick={() => setCreating(true)}
-            className="px-5 py-2.5 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] font-mono text-[10px] uppercase tracking-[0.18em] hover:opacity-80 transition-opacity"
-          >
-            + Nueva categoría
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {savingOrder && (
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] animate-pulse">
+              Guardando…
+            </span>
+          )}
+          {!creating && (
+            <button
+              onClick={() => setCreating(true)}
+              className="px-5 py-2.5 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] font-mono text-[10px] uppercase tracking-[0.18em] hover:opacity-80 transition-opacity"
+            >
+              + Nueva categoría
+            </button>
+          )}
+        </div>
       </div>
 
       {creating && (
@@ -229,7 +416,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         </div>
       )}
 
-      {categories.length === 0 && !creating ? (
+      {items.length === 0 && !creating ? (
         <div className="border border-dashed border-[color:var(--color-grey-300)] py-24 text-center">
           <p className="font-display italic text-[28px] text-[color:var(--color-grey-500)]">
             Sin categorías
@@ -239,86 +426,29 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)]">
-          {categories.map((cat) => (
-            <div key={cat.id}>
-              {editingId === cat.id ? (
-                <div className="bg-[color:var(--color-paper)] p-4">
-                  <CategoryForm
-                    initial={{
-                      name: cat.name,
-                      slug: cat.slug,
-                      description: cat.description ?? "",
-                      coverUrl: cat.coverUrl ?? "",
-                      buttonText: cat.buttonText ?? "",
-                      buttonHref: cat.buttonHref ?? "",
-                      order: cat.order,
-                    }}
-                    storageKey={cat.id}
-                    onSave={(data) =>
-                      update.mutate({
-                        id: cat.id,
-                        data: {
-                          ...data,
-                          description: data.description || null,
-                          coverUrl: data.coverUrl || null,
-                          buttonText: data.buttonText || null,
-                          buttonHref: data.buttonHref || null,
-                        },
-                      })
-                    }
-                    onCancel={() => setEditingId(null)}
-                    saving={update.isPending}
-                  />
-                </div>
-              ) : (
-                <div className="bg-[color:var(--color-paper)] px-5 py-4 flex items-center gap-4">
-                  {cat.coverUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={cat.coverUrl}
-                      alt={cat.name}
-                      className="w-12 h-12 object-cover shrink-0 border border-[color:var(--color-grey-200)]"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display italic text-[20px] leading-tight text-[color:var(--color-ink)]">
-                      {cat.name}
-                    </p>
-                    <div className="flex items-center gap-4 mt-0.5">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)]">
-                        /{cat.slug}
-                      </span>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)]">
-                        {cat._count.collections} evento{cat._count.collections !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    {cat.description && (
-                      <p className="font-mono text-[10px] text-[color:var(--color-grey-600)] mt-1 truncate">
-                        {cat.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setEditingId(cat.id)}
-                      className="px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`¿Eliminar "${cat.name}"?`)) del.mutate({ id: cat.id });
-                      }}
-                      className="px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)] hover:border-red-400 hover:text-red-600 transition-colors"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="border border-[color:var(--color-grey-300)]">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={items.map((i) => i.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {items.map((cat) => (
+                <CategoryRow
+                  key={cat.id}
+                  cat={cat}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  editingId={editingId}
+                  update={update}
+                  del={del}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       )}
     </div>
