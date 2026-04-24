@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
+import { createSignedUrl } from "~/lib/supabase/admin";
+
+async function resolveCover(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return createSignedUrl(url, 7200);
+}
 
 const categoryInput = z.object({
   name: z.string().min(1),
@@ -13,17 +20,19 @@ const categoryInput = z.object({
 
 export const categoryRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.category.findMany({
+    const cats = await ctx.db.category.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       include: { _count: { select: { collections: { where: { isPublished: true } } } } },
     });
+    return Promise.all(cats.map(async (c) => ({ ...c, coverUrl: await resolveCover(c.coverUrl) })));
   }),
 
   adminList: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.category.findMany({
+    const cats = await ctx.db.category.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       include: { _count: { select: { collections: true } } },
     });
+    return Promise.all(cats.map(async (c) => ({ ...c, coverUrl: await resolveCover(c.coverUrl) })));
   }),
 
   create: protectedProcedure.input(categoryInput).mutation(async ({ ctx, input }) => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import { ImageUpload } from "~/app/_components/admin/ImageUpload";
 
 type Category = {
   id: string;
@@ -38,11 +39,13 @@ const emptyForm = {
 
 function CategoryForm({
   initial,
+  storageKey,
   onSave,
   onCancel,
   saving,
 }: {
   initial: typeof emptyForm;
+  storageKey: string;
   onSave: (data: typeof emptyForm) => void;
   onCancel: () => void;
   saving: boolean;
@@ -95,17 +98,12 @@ function CategoryForm({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-          URL de portada
-        </label>
-        <input
-          value={form.coverUrl}
-          onChange={(e) => set("coverUrl", e.target.value)}
-          className="border border-[color:var(--color-grey-300)] px-3 py-2 font-mono text-[12px] text-[color:var(--color-ink)] bg-transparent focus:outline-none focus:border-[color:var(--color-ink)]"
-          placeholder="https://..."
-        />
-      </div>
+      <ImageUpload
+        label="Foto de portada"
+        value={form.coverUrl || null}
+        storagePath={`category-covers/${storageKey}`}
+        onChange={(path) => set("coverUrl", path)}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="flex flex-col gap-1.5">
@@ -119,7 +117,7 @@ function CategoryForm({
             placeholder="Ver eventos"
           />
         </div>
-        <div className="flex flex-col gap-1.5 md:col-span-1">
+        <div className="flex flex-col gap-1.5">
           <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
             Destino del botón
           </label>
@@ -162,6 +160,11 @@ function CategoryForm({
   );
 }
 
+function useNewKey() {
+  const ref = useRef(`new-${Date.now()}`);
+  return ref.current;
+}
+
 export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
   const utils = api.useUtils();
   const { data: categories = initialCategories } = api.category.adminList.useQuery(undefined, {
@@ -170,6 +173,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
 
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const newKey = useNewKey();
 
   const create = api.category.create.useMutation({
     onSuccess: () => { void utils.category.adminList.invalidate(); setCreating(false); },
@@ -209,6 +213,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
           </p>
           <CategoryForm
             initial={emptyForm}
+            storageKey={newKey}
             onSave={(data) =>
               create.mutate({
                 ...data,
@@ -249,6 +254,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                       buttonHref: cat.buttonHref ?? "",
                       order: cat.order,
                     }}
+                    storageKey={cat.id}
                     onSave={(data) =>
                       update.mutate({
                         id: cat.id,
