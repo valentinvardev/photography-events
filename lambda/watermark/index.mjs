@@ -5,8 +5,8 @@ import pg from "pg";
 
 const { Client } = pg;
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
-const BUCKET = process.env.AWS_S3_BUCKET;
+const s3 = new S3Client({ region: process.env.S3_REGION ?? process.env.AWS_REGION });
+const BUCKET = process.env.S3_BUCKET ?? process.env.AWS_S3_BUCKET;
 const S3_PREFIX = process.env.AWS_S3_PREFIX
   ? process.env.AWS_S3_PREFIX.replace(/\/?$/, "/")
   : "";
