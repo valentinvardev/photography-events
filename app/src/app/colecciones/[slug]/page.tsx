@@ -7,7 +7,6 @@ import { CartProvider } from "~/app/_components/CartContext";
 import { NavCartButton } from "~/app/_components/NavCartButton";
 import { Footer } from "~/app/_components/design/Footer";
 import { CollectionHero } from "~/app/_components/design/CollectionHero";
-import { MobileNav } from "~/app/_components/MobileNav";
 
 export default async function CollectionPage({
   params,
@@ -54,7 +53,6 @@ export default async function CollectionPage({
             </span>
             <div className="ml-auto flex items-center gap-3">
               <NavCartButton price={price} />
-              <MobileNav />
             </div>
           </div>
         </nav>
