@@ -182,6 +182,17 @@ function VideoPlayer({ url, mimeType, filename }: { url: string; mimeType?: stri
 
 export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPrev, onNext, toolbar, index, total }: Props) {
   const isVideo = !!mimeType?.startsWith("video/") || (!!filename && VIDEO_EXT.test(filename));
+  const [imgBlurred, setImgBlurred] = useState(false);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function blurOnRightClick(e: React.MouseEvent) {
+    e.preventDefault();
+    setImgBlurred(true);
+    clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = setTimeout(() => setImgBlurred(false), 2000);
+  }
+
+  useEffect(() => () => clearTimeout(blurTimerRef.current), []);
 
   useEffect(() => {
     if (!open) return;
@@ -215,7 +226,7 @@ export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPr
           transition={{ duration: 0.3 }}
           onClick={onClose}
           data-cursor="dark"
-          className="fixed inset-0 z-[120] bg-[color:var(--color-ink)]/97 flex flex-col cursor-none"
+          className="fixed inset-0 z-[120] bg-[color:var(--color-ink)]/97 flex flex-col cursor-auto"
         >
           {/* top bar */}
           <div
@@ -255,10 +266,10 @@ export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPr
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 src={url}
                 alt=""
-                className="max-w-full max-h-full object-contain select-none"
+                className={`max-w-full max-h-full object-contain select-none transition-[filter] duration-200 ${imgBlurred ? "blur-xl" : ""}`}
                 style={{ maxHeight: "calc(100vh - 200px)" }}
                 draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
+                onContextMenu={blurOnRightClick}
                 onClick={(e) => e.stopPropagation()}
               />
             )}

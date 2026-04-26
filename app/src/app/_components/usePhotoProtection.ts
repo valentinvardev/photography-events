@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const BLUR_DURATION_MS = 3000;
 
@@ -11,22 +11,24 @@ function isScreenshotCombo(e: KeyboardEvent): boolean {
 
 export function usePhotoProtection() {
   const [blurred, setBlurred] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const triggerBlur = useCallback(() => {
+    setBlurred(true);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setBlurred(false), BLUR_DURATION_MS);
+  }, []);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
     function onKeyDown(e: KeyboardEvent) {
-      if (isScreenshotCombo(e)) {
-        setBlurred(true);
-        clearTimeout(timer);
-        timer = setTimeout(() => setBlurred(false), BLUR_DURATION_MS);
-      }
+      if (isScreenshotCombo(e)) triggerBlur();
     }
 
     function onContextMenu(e: MouseEvent) {
       const target = e.target as HTMLElement;
       if (target.closest("[data-photo-protected]")) {
         e.preventDefault();
+        triggerBlur();
       }
     }
 
@@ -35,9 +37,9 @@ export function usePhotoProtection() {
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContextMenu);
-      clearTimeout(timer);
+      clearTimeout(timerRef.current);
     };
-  }, []);
+  }, [triggerBlur]);
 
   return { blurred };
 }
