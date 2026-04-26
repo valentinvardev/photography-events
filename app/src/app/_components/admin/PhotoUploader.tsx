@@ -32,7 +32,8 @@ const ROW_HEIGHT = 60;
 const VISIBLE_ROWS = 4;
 const POLL_INTERVAL_MS = 4_000;
 const POLL_MAX_ATTEMPTS = 30;
-const UPLOAD_CONCURRENCY = 10;
+const UPLOAD_CONCURRENCY = 3;
+const UPLOAD_MAX_RETRIES = 3;
 
 // ── Status indicator ──────────────────────────────────────────────────────────
 
@@ -214,29 +215,35 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
 
     const uploadOne = async (entry: FileEntry): Promise<UploadResult | null> => {
       updateEntry(entry.id, { status: "uploading" });
-      try {
-        const contentType = entry.file.type || (entry.isVideo ? "video/mp4" : "image/jpeg");
-        const { uploadUrl, key } = await getS3UploadUrl.mutateAsync({
-          collectionId,
-          filename: entry.file.name,
-          contentType,
-        });
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: entry.file,
-        });
-        if (!uploadRes.ok) {
-          updateEntry(entry.id, { status: "error", errorMsg: uploadRes.statusText });
+      const contentType = entry.file.type || (entry.isVideo ? "video/mp4" : "image/jpeg");
+
+      for (let attempt = 1; attempt <= UPLOAD_MAX_RETRIES; attempt++) {
+        try {
+          const { uploadUrl, key } = await getS3UploadUrl.mutateAsync({
+            collectionId,
+            filename: entry.file.name,
+            contentType,
+          });
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": contentType },
+            body: entry.file,
+          });
+          if (!uploadRes.ok) throw new Error(uploadRes.statusText);
+          updateEntry(entry.id, { status: "done" });
+          return { storageKey: key, filename: entry.file.name, mimeType: contentType, fileSize: entry.file.size, entryId: entry.id, isVideo: entry.isVideo };
+        } catch (err) {
+          if (attempt < UPLOAD_MAX_RETRIES) {
+            // exponential backoff: 1s, 2s, 4s
+            await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+            continue;
+          }
+          const msg = err instanceof Error ? err.message : "Error de red";
+          updateEntry(entry.id, { status: "error", errorMsg: `Intento ${attempt}/${UPLOAD_MAX_RETRIES}: ${msg}` });
           return null;
         }
-        updateEntry(entry.id, { status: "done" });
-        return { storageKey: key, filename: entry.file.name, mimeType: contentType, fileSize: entry.file.size, entryId: entry.id, isVideo: entry.isVideo };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error de red.";
-        updateEntry(entry.id, { status: "error", errorMsg: msg });
-        return null;
       }
+      return null;
     };
 
     const pendingPolls: { entryId: string; photoId: string }[] = [];
@@ -352,9 +359,26 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
               </span>
             )}
             {errorCount > 0 && (
-              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-safelight)]">
-                ✕ {errorCount} con error
-              </span>
+              <>
+                <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-safelight)]">
+                  ✕ {errorCount} con error
+                </span>
+                {allSettled && (
+                  <button
+                    onClick={() => {
+                      const failed = entries.filter((e) => e.status === "error");
+                      const fileList = Object.assign(
+                        failed.reduce<Record<number, File>>((acc, e, i) => { acc[i] = e.file; return acc; }, {}),
+                        { length: failed.length, item: (i: number) => failed[i]?.file ?? null },
+                      ) as unknown as FileList;
+                      void handleFiles(fileList);
+                    }}
+                    className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-safelight)] underline underline-offset-2 hover:opacity-70 transition-opacity"
+                  >
+                    Reintentar {errorCount}
+                  </button>
+                )}
+              </>
             )}
             {isUploading && (
               <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-400)] flex items-center gap-1.5">
