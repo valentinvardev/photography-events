@@ -114,13 +114,28 @@ export async function runOcr(photoId: string): Promise<{ bib: string | null }> {
 
 // ── Watermark ─────────────────────────────────────────────────────────────────
 
+// Cache the raw watermark PNG in memory for 10 minutes to avoid re-downloading
+// from Supabase on every photo processed.
+let wmCache: { buf: Buffer; expiresAt: number } | null = null;
+
+async function getWatermarkBytes(
+  client: NonNullable<ReturnType<typeof getAdminClient>>,
+): Promise<Buffer | null> {
+  const now = Date.now();
+  if (wmCache && now < wmCache.expiresAt) return wmCache.buf;
+  const { data, error } = await client.storage.from("photos").download(WATERMARK_KEY);
+  if (error ?? !data) return null;
+  const buf = Buffer.from(await data.arrayBuffer());
+  wmCache = { buf, expiresAt: now + 10 * 60 * 1000 };
+  return buf;
+}
+
 async function buildWatermarkComposite(
   client: NonNullable<ReturnType<typeof getAdminClient>>,
   imageWidth: number,
   imageHeight: number,
 ): Promise<{ input: Buffer; tile: boolean; blend: "over" }> {
-  const { data: wmData, error: wmError } = await client.storage.from("photos").download(WATERMARK_KEY);
-  const wmPng = (!wmError && wmData) ? Buffer.from(await wmData.arrayBuffer()) : null;
+  const wmPng = await getWatermarkBytes(client);
 
   if (wmPng) {
     const meta = await sharp(wmPng).metadata();

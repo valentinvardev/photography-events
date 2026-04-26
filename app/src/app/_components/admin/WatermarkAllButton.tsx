@@ -37,6 +37,8 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   const missingCount = unwatermarked?.length ?? 0;
   const totalCount = allIds?.length ?? 0;
 
+  const CONCURRENCY = 3;
+
   const run = async (ids: string[]) => {
     if (ids.length === 0) return;
     setState("running");
@@ -44,12 +46,14 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     setProgress({ done: 0, total: ids.length });
 
     const newFailed: string[] = [];
-    for (let i = 0; i < ids.length; i++) {
-      const ok = await processOne(ids[i]!);
-      if (!ok) newFailed.push(ids[i]!);
-      setProgress({ done: i + 1, total: ids.length });
-      // Small delay to avoid overwhelming the server
-      if (i < ids.length - 1) await new Promise((r) => setTimeout(r, 200));
+    let done = 0;
+
+    for (let i = 0; i < ids.length; i += CONCURRENCY) {
+      const chunk = ids.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(chunk.map(processOne));
+      results.forEach((ok, j) => { if (!ok) newFailed.push(chunk[j]!); });
+      done += chunk.length;
+      setProgress({ done, total: ids.length });
     }
 
     setFailed(newFailed);
