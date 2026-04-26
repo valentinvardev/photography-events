@@ -88,7 +88,7 @@ export function CollectionHero({
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-8 inline-block w-16 h-16 md:w-20 md:h-20 overflow-hidden"
+            className="mb-8 inline-block w-28 h-28 md:w-40 md:h-40 overflow-hidden"
           >
             <img src={logoUrl} alt="" className="w-full h-full object-cover" />
           </motion.div>
