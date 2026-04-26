@@ -35,24 +35,22 @@ export function Nav() {
           : "bg-transparent border-b border-transparent"
       }`}
     >
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-6 px-6 md:px-10 h-16">
-        {/* wordmark */}
+      <div className="flex items-center px-6 md:px-10 h-16">
+        {/* wordmark — left */}
         <Link href="/" className="flex items-baseline gap-3">
           <span className={`font-display italic text-[22px] leading-none tracking-tight transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}>
             Ivana Maritano
           </span>
         </Link>
 
-        {/* center — running time/locale (desktop only) */}
-        <div className="hidden md:flex justify-center">
-          <span className={`font-mono text-[10px] uppercase tracking-[0.22em] transition-colors duration-500 ${scrolled ? "text-[color:var(--color-grey-500)]" : "text-[color:var(--color-paper)]/60"}`}>
+        {/* right side — everything pushed to the right */}
+        <div className="ml-auto flex items-center gap-6 md:gap-8">
+          {/* running time — desktop only */}
+          <span className={`hidden md:inline font-mono text-[10px] uppercase tracking-[0.22em] transition-colors duration-500 ${scrolled ? "text-[color:var(--color-grey-500)]" : "text-[color:var(--color-paper)]/60"}`}>
             {time}
           </span>
-        </div>
 
-        {/* right — links */}
-        <div className="flex items-center gap-8">
-          {/* Desktop-only links */}
+          {/* desktop links */}
           <Link
             href="#eventos"
             className={`hidden md:inline-block link-draw font-mono text-[11px] uppercase tracking-[0.22em] transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}
@@ -84,7 +82,7 @@ export function Nav() {
             </span>
           </Link>
 
-          {/* Mobile: hamburger only */}
+          {/* hamburger — mobile only */}
           <div className={`flex items-center md:hidden transition-colors duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}>
             <MobileNav />
           </div>
