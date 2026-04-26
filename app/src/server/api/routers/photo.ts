@@ -223,15 +223,36 @@ export const photoRouter = createTRPCRouter({
       void (async () => {
         const { runOcr, runWatermark, runFaceIndex } = await import("~/lib/photo-processing");
         const { runVideoWatermark } = await import("~/lib/video-processing");
+        const lambdaArn = env.LAMBDA_WATERMARK_ARN;
+
         for (let i = 0; i < ids.length; i++) {
           const { id: photoId, isVideo } = ids[i]!;
-          await new Promise((r) => setTimeout(r, i * 400));
+          const photo = input.photos[i]!;
+
           if (isVideo) {
             void runVideoWatermark(photoId);
           } else {
+            // OCR and face indexing always run locally
             void runOcr(photoId);
-            void runWatermark(photoId);
             void runFaceIndex(photoId, input.collectionId);
+
+            if (lambdaArn) {
+              // Fire-and-forget via Lambda — fast, no stagger needed
+              const { LambdaClient, InvokeCommand } = await import("@aws-sdk/client-lambda");
+              const lambda = new LambdaClient({ region: env.AWS_REGION ?? "us-east-2" });
+              lambda.send(new InvokeCommand({
+                FunctionName: lambdaArn,
+                InvocationType: "Event",
+                Payload: Buffer.from(JSON.stringify({
+                  photoId,
+                  storageKey: photo.storageKey,
+                  existingPreviewKey: undefined,
+                })),
+              })).catch((err: unknown) => console.error(`[bulkAdd] Lambda invoke failed for ${photoId}:`, err));
+            } else {
+              await new Promise((r) => setTimeout(r, i * 400));
+              void runWatermark(photoId);
+            }
           }
         }
       })();
