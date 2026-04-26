@@ -44,9 +44,9 @@ export default async function EditCollectionPage({
     db.photo.findMany({
       where,
       orderBy: sort === "newest"
-        ? [{ createdAt: "desc" }]
+        ? [{ createdAt: "desc" }, { order: "desc" }]
         : sort === "oldest"
-        ? [{ createdAt: "asc" }]
+        ? [{ createdAt: "asc" }, { order: "asc" }]
         : [{ bibNumber: { sort: "asc", nulls: "first" } }, { order: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,

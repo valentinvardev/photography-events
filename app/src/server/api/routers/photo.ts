@@ -14,8 +14,11 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
+import { env } from "~/env";
 
 const STORAGE_LIMIT_BYTES = 100 * 1024 * 1024 * 1024; // 100 GB
+const PHOTO_LIMIT = env.PHOTO_LIMIT ?? 10_000;
 
 const ACCEPTED_CONTENT_TYPES = z.string().refine(
   (t) => t.startsWith("image/") || t.startsWith("video/"),
@@ -140,6 +143,11 @@ export const photoRouter = createTRPCRouter({
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
 
+  getTotalPhotoCount: protectedProcedure.query(async ({ ctx }) => {
+    const count = await ctx.db.photo.count();
+    return { count, limit: PHOTO_LIMIT };
+  }),
+
   /** S3 presigned PUT URL — accepts both images and videos. */
   getS3UploadUrl: protectedProcedure
     .input(
@@ -149,7 +157,14 @@ export const photoRouter = createTRPCRouter({
         contentType: ACCEPTED_CONTENT_TYPES,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const total = await ctx.db.photo.count();
+      if (total >= PHOTO_LIMIT) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Límite de ${PHOTO_LIMIT.toLocaleString()} fotos alcanzado para este despliegue.`,
+        });
+      }
       const ext = path.extname(input.filename).toLowerCase() || ".jpg";
       const key = s3Key(`uploads/${input.collectionId}/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
       const url = await createS3UploadUrl(key, input.contentType);
@@ -175,6 +190,14 @@ export const photoRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const total = await ctx.db.photo.count();
+      if (total + input.photos.length > PHOTO_LIMIT) {
+        const available = Math.max(0, PHOTO_LIMIT - total);
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Límite de ${PHOTO_LIMIT.toLocaleString()} fotos alcanzado. Solo quedan ${available} lugares disponibles.`,
+        });
+      }
       const count = await ctx.db.photo.count({ where: { collectionId: input.collectionId } });
       const created = await Promise.all(
         input.photos.map((p, i) =>

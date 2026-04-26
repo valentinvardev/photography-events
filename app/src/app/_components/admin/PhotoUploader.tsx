@@ -233,6 +233,14 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
           updateEntry(entry.id, { status: "done" });
           return { storageKey: key, filename: entry.file.name, mimeType: contentType, fileSize: entry.file.size, entryId: entry.id, isVideo: entry.isVideo };
         } catch (err) {
+          // Non-retriable: limit reached
+          const isForbidden = err != null && typeof err === "object" && "data" in err &&
+            (err as { data?: { code?: string } }).data?.code === "FORBIDDEN";
+          if (isForbidden) {
+            const msg = err instanceof Error ? err.message : "Límite de fotos alcanzado";
+            updateEntry(entry.id, { status: "error", errorMsg: msg });
+            return null;
+          }
           if (attempt < UPLOAD_MAX_RETRIES) {
             // exponential backoff: 1s, 2s, 4s
             await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
