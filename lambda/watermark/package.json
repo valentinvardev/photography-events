@@ -1,0 +1,10 @@
+{
+  "name": "watermark-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "pg": "^8.0.0",
+    "sharp": "^0.33.0"
+  }
+}

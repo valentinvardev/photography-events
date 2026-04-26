@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 
-type RunState = "idle" | "running" | "done";
+type RunState = "idle" | "running-lambda" | "running-local" | "done";
 
 async function processOne(photoId: string): Promise<boolean> {
   try {
@@ -24,6 +24,7 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   const [state, setState] = useState<RunState>("idle");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [failed, setFailed] = useState<string[]>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: unwatermarked, refetch } = api.photo.listUnwatermarked.useQuery(
     { collectionId },
@@ -37,11 +38,46 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   const missingCount = unwatermarked?.length ?? 0;
   const totalCount = allIds?.length ?? 0;
 
+  // Stop polling when all are watermarked
+  useEffect(() => {
+    if (state === "running-lambda" && missingCount === 0 && progress.total > 0) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setState("done");
+      setProgress((p) => ({ ...p, done: p.total }));
+      router.refresh();
+    }
+    if (state === "running-lambda") {
+      setProgress((p) => ({ ...p, done: p.total - missingCount }));
+    }
+  }, [missingCount, state, progress.total, router]);
+
+  const runLambda = async (ids: string[]) => {
+    setState("running-lambda");
+    setProgress({ done: 0, total: ids.length });
+    setFailed([]);
+
+    // Fire all Lambdas at once
+    const res = await fetch("/api/watermark/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ collectionId }),
+    });
+
+    if (!res.ok) {
+      // Lambda not configured — fall back to local
+      setState("idle");
+      await runLocal(ids);
+      return;
+    }
+
+    // Poll every 3 seconds — Lambda updates DB as it completes
+    pollRef.current = setInterval(() => { void refetch(); }, 3000);
+  };
+
   const CONCURRENCY = 3;
 
-  const run = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    setState("running");
+  const runLocal = async (ids: string[]) => {
+    setState("running-local");
     setFailed([]);
     setProgress({ done: 0, total: ids.length });
 
@@ -62,13 +98,28 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     router.refresh();
   };
 
-  if (state === "running") {
+  const run = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    // Try Lambda first, fall back to local
+    await runLambda(ids);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  if (state === "running-lambda" || state === "running-local") {
+    const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
     return (
       <div className="flex items-center gap-3">
         <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-600 border-t-transparent animate-spin shrink-0" />
-        <span className="font-mono text-[10px] text-[color:var(--color-grey-500)]">
-          {progress.done}/{progress.total} procesadas
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono text-[10px] text-[color:var(--color-grey-500)]">
+            {state === "running-lambda" ? "Lambda procesando…" : "Procesando…"} {progress.done}/{progress.total} ({pct}%)
+          </span>
+          <div className="w-32 h-0.5 bg-[color:var(--color-grey-200)]">
+            <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -89,7 +140,7 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
               {progress.total - failed.length}/{progress.total} ok
             </span>
             <button
-              onClick={() => void run(failed)}
+              onClick={() => void runLocal(failed)}
               className="px-2.5 py-1 border border-red-300 font-mono text-[9px] uppercase tracking-[0.12em] text-red-600 hover:bg-red-50 transition-colors"
             >
               Reintentar {failed.length} fallidas
@@ -106,7 +157,6 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     );
   }
 
-  // idle
   if (missingCount === 0) {
     return (
       <div className="flex items-center gap-3">

@@ -26,6 +26,7 @@ export const env = createEnv({
     AWS_REGION: z.string().optional(),
     AWS_S3_BUCKET: z.string().optional(),
     AWS_S3_PREFIX: z.string().optional(),
+    LAMBDA_WATERMARK_ARN: z.string().optional(),
   },
 
   client: {
@@ -54,6 +55,7 @@ export const env = createEnv({
     AWS_REGION: process.env.AWS_REGION,
     AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
     AWS_S3_PREFIX: process.env.AWS_S3_PREFIX,
+    LAMBDA_WATERMARK_ARN: process.env.LAMBDA_WATERMARK_ARN,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY: process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY,
