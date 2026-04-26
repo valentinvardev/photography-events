@@ -4,11 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 
+type RunState = "idle" | "running" | "done";
+
+async function processOne(photoId: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/watermark", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photoId }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [state, setState] = useState<RunState>("idle");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [mode, setMode] = useState<"missing" | "all">("missing");
+  const [failed, setFailed] = useState<string[]>([]);
 
   const { data: unwatermarked, refetch } = api.photo.listUnwatermarked.useQuery(
     { collectionId },
@@ -22,36 +37,31 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   const missingCount = unwatermarked?.length ?? 0;
   const totalCount = allIds?.length ?? 0;
 
-  const handleRun = async (ids: string[]) => {
+  const run = async (ids: string[]) => {
     if (ids.length === 0) return;
-    setStatus("running");
+    setState("running");
+    setFailed([]);
     setProgress({ done: 0, total: ids.length });
 
-    let done = 0;
-    for (const photoId of ids) {
-      try {
-        const res = await fetch("/api/watermark", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photoId }),
-        });
-        if (!res.ok) console.error("Watermark failed for", photoId);
-      } catch {
-        console.error("Watermark error for", photoId);
-      }
-      done++;
-      setProgress({ done, total: ids.length });
+    const newFailed: string[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      const ok = await processOne(ids[i]!);
+      if (!ok) newFailed.push(ids[i]!);
+      setProgress({ done: i + 1, total: ids.length });
+      // Small delay to avoid overwhelming the server
+      if (i < ids.length - 1) await new Promise((r) => setTimeout(r, 200));
     }
 
-    setStatus("done");
+    setFailed(newFailed);
+    setState("done");
     void refetch();
     router.refresh();
   };
 
-  if (status === "running") {
+  if (state === "running") {
     return (
       <div className="flex items-center gap-3">
-        <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-600 border-t-transparent animate-spin" />
+        <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-600 border-t-transparent animate-spin shrink-0" />
         <span className="font-mono text-[10px] text-[color:var(--color-grey-500)]">
           {progress.done}/{progress.total} procesadas
         </span>
@@ -59,17 +69,40 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     );
   }
 
-  if (status === "done") {
+  if (state === "done") {
     return (
-      <span className="font-mono text-[10px] text-green-600 flex items-center gap-1.5">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-        Listo
-      </span>
+      <div className="flex items-center gap-3 flex-wrap">
+        {failed.length === 0 ? (
+          <span className="font-mono text-[10px] text-green-600 flex items-center gap-1.5">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Listo — {progress.total} procesadas
+          </span>
+        ) : (
+          <>
+            <span className="font-mono text-[10px] text-[color:var(--color-grey-500)]">
+              {progress.total - failed.length}/{progress.total} ok
+            </span>
+            <button
+              onClick={() => void run(failed)}
+              className="px-2.5 py-1 border border-red-300 font-mono text-[9px] uppercase tracking-[0.12em] text-red-600 hover:bg-red-50 transition-colors"
+            >
+              Reintentar {failed.length} fallidas
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setState("idle")}
+          className="font-mono text-[9px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-ink)] underline underline-offset-2 transition-colors"
+        >
+          volver
+        </button>
+      </div>
     );
   }
 
+  // idle
   if (missingCount === 0) {
     return (
       <div className="flex items-center gap-3">
@@ -80,7 +113,7 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
           Todas con marca de agua
         </span>
         <button
-          onClick={() => void handleRun(allIds ?? [])}
+          onClick={() => void run(allIds ?? [])}
           className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] underline underline-offset-2 transition-colors"
         >
           Reaplicar todas ({totalCount})
@@ -92,13 +125,13 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <button
-        onClick={() => void handleRun(unwatermarked ?? [])}
+        onClick={() => void run(unwatermarked ?? [])}
         className="px-2.5 py-1 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
       >
-        Aplicar marca de agua ({missingCount} sin marca)
+        Aplicar marca ({missingCount} sin marca)
       </button>
       <button
-        onClick={() => void handleRun(allIds ?? [])}
+        onClick={() => void run(allIds ?? [])}
         className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] underline underline-offset-2 transition-colors"
       >
         Reaplicar todas ({totalCount})

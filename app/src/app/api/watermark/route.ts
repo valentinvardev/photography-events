@@ -22,10 +22,12 @@ export async function POST(request: NextRequest) {
   if (isVideo) {
     const { runVideoWatermark } = await import("~/lib/video-processing");
     const result = await runVideoWatermark(body.photoId);
+    if (!result.previewKey) return NextResponse.json({ error: "Processing failed" }, { status: 500 });
     return NextResponse.json({ previewKey: result.previewKey });
   } else {
     const { runWatermark } = await import("~/lib/photo-processing");
     const result = await runWatermark(body.photoId);
+    if (!result.previewKey) return NextResponse.json({ error: "Processing failed" }, { status: 500 });
     return NextResponse.json({ previewKey: result.previewKey });
   }
 }
