@@ -19,10 +19,10 @@ export default async function EditCollectionPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
 }) {
   const { id } = await params;
-  const { page: pageParam, q } = await searchParams;
+  const { page: pageParam, q, sort } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
   const [collection, allCategories] = await Promise.all([
@@ -43,7 +43,11 @@ export default async function EditCollectionPage({
     db.photo.count({ where: { collectionId: id, bibNumber: null } }),
     db.photo.findMany({
       where,
-      orderBy: [{ bibNumber: { sort: "asc", nulls: "first" } }, { order: "asc" }],
+      orderBy: sort === "newest"
+        ? [{ createdAt: "desc" }]
+        : sort === "oldest"
+        ? [{ createdAt: "asc" }]
+        : [{ bibNumber: { sort: "asc", nulls: "first" } }, { order: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       select: { id: true, filename: true, bibNumber: true, storageKey: true, previewKey: true, price: true, mimeType: true },
@@ -217,6 +221,7 @@ export default async function EditCollectionPage({
             totalPages={totalPages}
             totalCount={filteredTotal}
             q={q ?? ""}
+            sort={sort ?? ""}
           />
         </div>
       </div>

@@ -263,6 +263,7 @@ export function PhotoManager({
   totalPages,
   totalCount,
   q,
+  sort,
 }: {
   collectionId: string;
   photos: Photo[];
@@ -270,6 +271,7 @@ export function PhotoManager({
   totalPages: number;
   totalCount: number;
   q: string;
+  sort: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -286,11 +288,13 @@ export function PhotoManager({
     onSuccess: () => { setSelected(new Set()); setSelectMode(false); router.refresh(); },
   });
 
-  const navigate = (newPage: number, newQ?: string) => {
+  const navigate = (newPage: number, newQ?: string, newSort?: string) => {
     const params = new URLSearchParams();
     if (newPage > 1) params.set("page", String(newPage));
     const query = newQ ?? search;
     if (query) params.set("q", query);
+    const s = newSort ?? sort;
+    if (s) params.set("sort", s);
     const qs = params.toString();
     startTransition(() => {
       router.push(`/admin/colecciones/${collectionId}${qs ? `?${qs}` : ""}`);
@@ -298,6 +302,7 @@ export function PhotoManager({
   };
 
   const handleSearch = (val: string) => { setSearch(val); navigate(1, val); };
+  const handleSort = (val: string) => { navigate(1, undefined, val); };
   const toggleSelect = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -343,6 +348,16 @@ export function PhotoManager({
         <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)] shrink-0">
           {totalCount} foto{totalCount !== 1 ? "s" : ""}
         </span>
+
+        <select
+          value={sort || "bib"}
+          onChange={(e) => handleSort(e.target.value === "bib" ? "" : e.target.value)}
+          className="font-mono text-[9px] uppercase tracking-[0.12em] border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] text-[color:var(--color-grey-600)] px-2 py-1.5 focus:outline-none focus:border-[color:var(--color-ink)] transition-colors shrink-0"
+        >
+          <option value="bib">Sin dorsal primero</option>
+          <option value="newest">Más recientes</option>
+          <option value="oldest">Más antiguas</option>
+        </select>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {selectMode && selected.size > 0 && (
