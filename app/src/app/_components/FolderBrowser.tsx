@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import { BibCheckoutModal } from "~/app/_components/FolderModal";
 import { useCart } from "~/app/_components/CartContext";
 import { Lightbox } from "~/app/_components/design/Lightbox";
+import { usePhotoProtection } from "~/app/_components/usePhotoProtection";
 
 // ─── Photo tile ───────────────────────────────────────────────────────────────
 // URL is passed from parent batch query — no per-tile API call.
@@ -27,6 +28,7 @@ const PhotoTile = memo(function PhotoTile({
   url,
   mimeType,
   filename,
+  blurred,
   onOpenLightbox,
   onToggleCart,
 }: {
@@ -39,6 +41,7 @@ const PhotoTile = memo(function PhotoTile({
   url: string | null;
   mimeType?: string | null;
   filename?: string;
+  blurred: boolean;
   onOpenLightbox: (photoId: string, bibNumber: string | null, url: string) => void;
   onToggleCart: (photoId: string, bibNumber: string | null, url: string, price: number) => void;
 }) {
@@ -57,7 +60,8 @@ const PhotoTile = memo(function PhotoTile({
 
       {/* Photo */}
       <div
-        className="relative overflow-hidden bg-[color:var(--color-grey-300)]"
+        data-photo-protected
+        className={`relative overflow-hidden bg-[color:var(--color-grey-300)] transition-[filter] duration-300 ${blurred ? "blur-xl" : ""}`}
         style={{ aspectRatio: "4/3" }}
       >
         {/* Viewfinder corners */}
@@ -81,14 +85,16 @@ const PhotoTile = memo(function PhotoTile({
               v.pause();
               v.currentTime = 0;
             }}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-cover object-top pointer-events-none"
           />
         ) : (
           <img
             src={url}
             alt=""
             loading="lazy"
-            className="w-full h-full object-cover object-top"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className="w-full h-full object-cover object-top select-none"
           />
         )}
 
@@ -222,6 +228,7 @@ export function FolderBrowser({
   collectionId: string;
   pricePerBib: number;
 }) {
+  const { blurred } = usePhotoProtection();
   const PAGE_SIZE = 20;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -602,6 +609,7 @@ export function FolderBrowser({
                   url={urlMap.get(id) ?? null}
                   mimeType={mimeTypeMap.get(id)?.mimeType}
                   filename={mimeTypeMap.get(id)?.filename}
+                  blurred={blurred}
                   onOpenLightbox={handleOpenLightbox}
                   onToggleCart={handleToggleCart}
                 />
@@ -657,6 +665,7 @@ export function FolderBrowser({
                     url={urlMap.get(p.id) ?? null}
                     mimeType={mimeTypeMap.get(p.id)?.mimeType}
                     filename={mimeTypeMap.get(p.id)?.filename}
+                    blurred={blurred}
                     onOpenLightbox={handleOpenLightbox}
                     onToggleCart={handleToggleCart}
                   />
@@ -715,6 +724,7 @@ export function FolderBrowser({
                     url={urlMap.get(p.id) ?? null}
                     mimeType={mimeTypeMap.get(p.id)?.mimeType}
                     filename={mimeTypeMap.get(p.id)?.filename}
+                    blurred={blurred}
                     onOpenLightbox={handleOpenLightbox}
                     onToggleCart={handleToggleCart}
                   />

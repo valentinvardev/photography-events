@@ -258,6 +258,7 @@ export function Lightbox({ open, onClose, url, mimeType, filename, caption, onPr
                 className="max-w-full max-h-full object-contain select-none"
                 style={{ maxHeight: "calc(100vh - 200px)" }}
                 draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
               />
             )}
