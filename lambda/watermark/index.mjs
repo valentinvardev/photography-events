@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import pg from "pg";
 
-const { Client } = pg;
+const { Pool } = pg;
 
 const s3 = new S3Client({ region: process.env.BUCKET_REGION });
 const BUCKET = process.env.BUCKET_NAME;
@@ -16,10 +16,22 @@ const WATERMARK_KEY = "watermarks/active.png";
 let wmCache = null;
 let wmCacheExpiry = 0;
 
+// Module-level pg pool — reused across warm invocations.
+// max=1 because each Lambda container handles one request at a time.
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 1,
+  idleTimeoutMillis: 60_000,
+  connectionTimeoutMillis: 5_000,
+});
+pgPool.on("error", (err) => console.error("[pg pool error]", err));
+
+// Module-level Supabase client for watermark download
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
 async function getWatermarkBytes() {
   const now = Date.now();
   if (wmCache && now < wmCacheExpiry) return wmCache;
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data, error } = await supabase.storage.from("photos").download(WATERMARK_KEY);
   if (error || !data) return null;
   wmCache = Buffer.from(await data.arrayBuffer());
@@ -76,7 +88,7 @@ export async function handler(event) {
 
   const watermarked = await sharp(photoBytes)
     .composite([composite])
-    .jpeg({ quality: 78 })
+    .jpeg({ quality: 78, mozjpeg: true })
     .toBuffer();
 
   if (existingPreviewKey) {
@@ -91,10 +103,7 @@ export async function handler(event) {
     ContentType: "image/jpeg",
   }));
 
-  const db = new Client({ connectionString: process.env.DATABASE_URL });
-  await db.connect();
-  await db.query('UPDATE "Photo" SET "previewKey" = $1 WHERE id = $2', [previewKey, photoId]);
-  await db.end();
+  await pgPool.query('UPDATE "Photo" SET "previewKey" = $1 WHERE id = $2', [previewKey, photoId]);
 
   console.log(`[Lambda] photoId=${photoId} done → ${previewKey}`);
   return { previewKey };
