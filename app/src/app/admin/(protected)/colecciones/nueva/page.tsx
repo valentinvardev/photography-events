@@ -15,7 +15,6 @@ const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 1 + i);
 // ── DatePicker ────────────────────────────────────────────────────────────────
 
 function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // Local state for each part — emit only when all three are set
   const [day, setDay] = useState(() => value ? String(parseInt(value.split("-")[2] ?? "0")) : "");
   const [month, setMonth] = useState(() => value ? String(parseInt(value.split("-")[1] ?? "0") - 1) : "");
   const [year, setYear] = useState(() => value ? (value.split("-")[0] ?? "") : "");
@@ -38,7 +37,6 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
   const handleDay = (d: string) => { setDay(d); emit(d, month, year); };
   const handleMonth = (m: string) => {
     setMonth(m);
-    // Clamp day if needed when month changes
     if (day && year && m !== "") {
       const maxDay = new Date(parseInt(year), parseInt(m) + 1, 0).getDate();
       const clamped = String(Math.min(parseInt(day), maxDay));
@@ -50,7 +48,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
   };
   const handleYear = (y: string) => { setYear(y); emit(day, month, y); };
 
-  const sel = "flex-1 appearance-none bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all cursor-pointer";
+  const sel = "flex-1 appearance-none bg-[color:var(--color-paper)] border border-[color:var(--color-grey-300)] px-3 py-2.5 font-mono text-[11px] tracking-[0.08em] text-[color:var(--color-ink)] focus:outline-none focus:border-[color:var(--color-ink)] transition-colors cursor-pointer";
   return (
     <div className="flex gap-2">
       <select className={sel} value={day} onChange={(e) => handleDay(e.target.value)}>
@@ -69,7 +67,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-// ── Image uploader (banner or logo) ──────────────────────────────────────────
+// ── Image uploader ────────────────────────────────────────────────────────────
 
 function ImageUpload({
   label,
@@ -88,23 +86,21 @@ function ImageUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File) => {
-    void onUpload(file);
-  };
-
   return (
     <div>
-      <label className="block text-gray-600 text-sm font-medium mb-1.5">{label}</label>
-      <p className="text-xs text-gray-400 mb-2">{hint}</p>
+      <label className="block font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+        {label}
+      </label>
+      <p className="font-mono text-[10px] text-[color:var(--color-grey-400)] mb-3 leading-relaxed">{hint}</p>
       <div className="flex items-center gap-3">
         {value ? (
-          <div className="relative w-16 h-10 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100">
+          <div className="relative w-16 h-10 overflow-hidden border border-[color:var(--color-grey-300)] flex-shrink-0 bg-[color:var(--color-grey-100)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" className="w-full h-full object-cover" />
             <button
               type="button"
               onClick={() => onChange("")}
-              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center text-xs leading-none"
+              className="absolute top-0 right-0 w-4 h-4 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex items-center justify-center text-[10px] leading-none font-mono"
             >×</button>
           </div>
         ) : null}
@@ -112,19 +108,19 @@ function ImageUpload({
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 border border-[color:var(--color-grey-300)] font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors disabled:opacity-50"
         >
           {uploading ? (
-            <div className="w-4 h-4 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
+            <span className="inline-block w-3 h-3 border-2 border-[color:var(--color-grey-400)] border-t-[color:var(--color-ink)] animate-spin" />
           ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
           )}
-          {uploading ? "Subiendo..." : value ? "Cambiar" : "Subir imagen"}
+          {uploading ? "Subiendo…" : value ? "Cambiar" : "Subir imagen"}
         </button>
         {value && (
-          <span className="text-xs text-green-600 flex items-center gap-1">
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-green-700 flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
@@ -133,12 +129,12 @@ function ImageUpload({
         )}
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void onUpload(f); }} />
     </div>
   );
 }
 
-// ── Draggable banner preview ──────────────────────────────────────────────────
+// ── Banner dragger ────────────────────────────────────────────────────────────
 
 function BannerDragger({
   bannerUrl,
@@ -169,7 +165,6 @@ function BannerDragger({
     startFocal.current = focalY;
   };
 
-  // Global move/up via useEffect so cleanup is guaranteed
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current || !containerRef.current) return;
@@ -201,8 +196,7 @@ function BannerDragger({
   return (
     <div
       ref={containerRef}
-      className="relative h-44 rounded-t-2xl overflow-hidden cursor-ns-resize select-none"
-      style={{ background: "#e2e8f0" }}
+      className="relative h-44 overflow-hidden cursor-ns-resize select-none bg-[color:var(--color-grey-200)]"
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
@@ -214,18 +208,16 @@ function BannerDragger({
         className="w-full h-full object-cover pointer-events-none"
         style={{ objectPosition: `center ${Math.round(focalY * 100)}%` }}
       />
-      {/* Drag hint overlay */}
-      <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center pointer-events-none">
-        <div className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-black/50 text-white text-xs font-medium">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="absolute inset-0 bg-[color:var(--color-ink)]/30 flex flex-col items-center justify-center pointer-events-none">
+        <div className="flex items-center gap-2 px-3 py-1.5 border border-[color:var(--color-paper)]/40 bg-[color:var(--color-ink)]/60 font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-paper)]">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
           </svg>
           Arrastrá para reencuadrar
         </div>
       </div>
-      {/* Focal line indicator */}
       <div
-        className="absolute left-0 right-0 h-px bg-white/60 pointer-events-none"
+        className="absolute left-0 right-0 h-px bg-[color:var(--color-paper)]/50 pointer-events-none"
         style={{ top: `${focalY * 100}%` }}
       />
     </div>
@@ -234,12 +226,14 @@ function BannerDragger({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const inputClass = "w-full rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all border border-gray-200 bg-white";
+const inputClass = "w-full bg-[color:var(--color-paper)] border border-[color:var(--color-grey-300)] px-3 py-2.5 font-mono text-[11px] tracking-[0.04em] text-[color:var(--color-ink)] placeholder:text-[color:var(--color-grey-400)] placeholder:tracking-[0.04em] focus:outline-none focus:border-[color:var(--color-ink)] transition-colors";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-gray-600 text-sm font-medium mb-1.5">{label}</label>
+      <label className="block font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -272,7 +266,7 @@ export default function NewCollectionPage() {
       slug: title
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[̀-ͯ]/g, "")
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, ""),
     }));
@@ -299,7 +293,6 @@ export default function NewCollectionPage() {
       });
       if (!uploadRes.ok) return;
 
-      // Build local preview from blob
       const previewUrl = URL.createObjectURL(file);
       setForm((f) => ({ ...f, [type === "banner" ? "bannerUrl" : "logoUrl"]: previewUrl }));
       setKeys((k) => ({ ...k, [type === "banner" ? "bannerKey" : "logoKey"]: path }));
@@ -340,18 +333,27 @@ export default function NewCollectionPage() {
 
       {/* ── Form ── */}
       <div className="max-w-xl w-full">
-        <button onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] mb-8 transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           Volver a eventos
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Crear evento</h1>
-        <p className="text-gray-500 text-sm mb-8">Completá los datos — la previsualización se actualiza en tiempo real.</p>
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+          (01) — Nuevo evento
+        </p>
+        <h1 className="font-display italic font-light leading-[0.95] tracking-[-0.02em] text-[44px] md:text-[56px] text-[color:var(--color-ink)] mb-3">
+          Crear evento.
+        </h1>
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--color-grey-500)] mb-10">
+          La previsualización se actualiza en tiempo real
+        </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <Field label="Nombre del evento *">
             <input value={form.title} onChange={(e) => handleTitleChange(e.target.value)}
               required placeholder="ej. Maratón Rosario 2025" className={inputClass} />
@@ -370,30 +372,34 @@ export default function NewCollectionPage() {
           <Field label="Descripción">
             <textarea value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3} placeholder="Descripción breve del evento..." className={inputClass} />
+              rows={3} placeholder="Descripción breve del evento…" className={inputClass} />
           </Field>
 
           <Field label="URL (slug) *">
             <input value={form.slug}
               onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
               required placeholder="maraton-rosario-2025" className={inputClass} />
-            <p className="text-gray-400 text-xs mt-1.5">URL pública: /colecciones/{form.slug || "..."}</p>
+            <p className="font-mono text-[10px] tracking-[0.04em] text-[color:var(--color-grey-400)] mt-2">
+              URL pública: /colecciones/{form.slug || "…"}
+            </p>
           </Field>
 
           {/* ── Images ── */}
-          <div className="border-t border-gray-100 pt-5">
-            <p className="text-gray-700 text-sm font-semibold mb-4">Imágenes del evento</p>
-            <div className="flex flex-col gap-5">
+          <div className="border-t border-[color:var(--color-grey-300)] pt-6">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-6">
+              Imágenes del evento
+            </p>
+            <div className="flex flex-col gap-6">
               <ImageUpload
-                label="Banner (fondo de la tarjeta)"
-                hint="Imagen horizontal, mínimo 800×400px. Podés reencuadrar arrastrando la previsualización."
+                label="Banner"
+                hint="Imagen horizontal, mínimo 800×400px. Reencuadrá arrastrando la previsualización."
                 value={form.bannerUrl}
                 onChange={(url) => { setForm((f) => ({ ...f, bannerUrl: url })); if (!url) setKeys((k) => ({ ...k, bannerKey: "" })); }}
                 uploading={uploadingBanner}
                 onUpload={(file) => uploadImageWithKey(file, "banner")}
               />
               <ImageUpload
-                label="Logo del evento (círculo central)"
+                label="Logo del evento"
                 hint="Imagen cuadrada o circular, mínimo 200×200px."
                 value={form.logoUrl}
                 onChange={(url) => { setForm((f) => ({ ...f, logoUrl: url })); if (!url) setKeys((k) => ({ ...k, logoKey: "" })); }}
@@ -403,38 +409,45 @@ export default function NewCollectionPage() {
             </div>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-blue-50 transition-colors">
+          <label className="flex items-center gap-3 cursor-pointer p-4 border border-[color:var(--color-grey-300)] hover:border-[color:var(--color-ink)] transition-colors">
             <div className="relative">
               <input type="checkbox" checked={form.isPublished}
                 onChange={(e) => setForm((f) => ({ ...f, isPublished: e.target.checked }))}
                 className="sr-only" />
-              <div className="w-10 h-5 rounded-full transition-colors"
-                style={{ background: form.isPublished ? "#2563eb" : "#e2e8f0" }}>
-                <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+              <div className="w-10 h-5 transition-colors"
+                style={{ background: form.isPublished ? "var(--color-ink)" : "var(--color-grey-300)" }}>
+                <div className="absolute top-0.5 w-4 h-4 bg-[color:var(--color-paper)] transition-transform"
                   style={{ left: form.isPublished ? "22px" : "2px" }} />
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">Publicar inmediatamente</p>
-              <p className="text-xs text-gray-400">El evento será visible en el sitio público</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--color-ink)]">
+                Publicar inmediatamente
+              </p>
+              <p className="font-mono text-[10px] tracking-[0.04em] text-[color:var(--color-grey-500)] mt-1">
+                El evento será visible en el sitio público
+              </p>
             </div>
           </label>
 
           {create.isError && (
-            <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100">
-              <p className="text-red-600 text-sm">Error al crear. Revisá que el slug no esté en uso.</p>
+            <div className="px-4 py-3 border border-red-300 bg-red-50">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-red-700">
+                Error al crear. Revisá que el slug no esté en uso.
+              </p>
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-2">
             <button type="submit"
               disabled={create.isPending || !form.title || !form.slug}
-              className="disabled:opacity-50 font-semibold text-white text-sm px-6 py-3 rounded-xl transition-all hover:opacity-90 shadow-sm"
-              style={{ background: "linear-gradient(135deg, #1a3a6b, #2563eb)" }}>
-              {create.isPending ? "Creando..." : "Crear evento →"}
+              className="px-5 py-3 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] font-mono text-[10px] uppercase tracking-[0.22em] hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {create.isPending ? "Creando…" : "Crear evento ↗"}
             </button>
             <button type="button" onClick={() => router.back()}
-              className="text-gray-500 hover:text-gray-800 px-6 py-3 rounded-xl transition-colors border border-gray-200 hover:border-gray-300 text-sm">
+              className="px-5 py-3 border border-[color:var(--color-grey-300)] font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
+            >
               Cancelar
             </button>
           </div>
@@ -443,12 +456,12 @@ export default function NewCollectionPage() {
 
       {/* ── Live preview ── */}
       <div className="hidden xl:block" style={{ position: "sticky", top: 0, alignSelf: "start" }}>
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">Vista previa de la tarjeta</p>
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+          Vista previa de la tarjeta
+        </p>
         <div className="max-w-xs mx-auto xl:mx-0">
-          {/* Intercept the card's banner area with a draggable version */}
           {form.bannerUrl ? (
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-visible flex flex-col">
-              {/* Draggable banner */}
+            <div className="bg-[color:var(--color-paper)] border border-[color:var(--color-grey-300)] overflow-visible flex flex-col">
               <div className="relative">
                 <BannerDragger
                   bannerUrl={form.bannerUrl}
@@ -456,45 +469,51 @@ export default function NewCollectionPage() {
                   onChange={(y) => setForm((f) => ({ ...f, bannerFocalY: y }))}
                 />
                 <div
-                  className="absolute -bottom-14 left-1/2 -translate-x-1/2 z-10 w-28 h-28 rounded-full border-4 border-white shadow-xl overflow-hidden flex items-center justify-center"
-                  style={{ background: form.logoUrl ? "#fff" : "#0057A8" }}
+                  className="absolute -bottom-14 left-1/2 -translate-x-1/2 z-10 w-28 h-28 rounded-full border-4 border-[color:var(--color-paper)] shadow-xl overflow-hidden flex items-center justify-center"
+                  style={{ background: form.logoUrl ? "var(--color-paper)" : "var(--color-ink)" }}
                 >
                   {form.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={form.logoUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-10 h-10 text-[color:var(--color-paper)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   )}
                 </div>
               </div>
-              {/* Rest of card */}
-              <div className="pt-20 pb-5 px-5 flex flex-col flex-1 text-center">
-                <h3 className="font-display font-700 uppercase text-gray-900 text-xl leading-tight mb-1">
-                  {form.title || <span className="text-gray-300">Nombre del evento</span>}
+              <div className="pt-20 pb-6 px-5 flex flex-col flex-1 text-center">
+                <h3 className="font-display italic text-[color:var(--color-ink)] text-[26px] leading-[1.05] tracking-[-0.02em] mb-2">
+                  {form.title || <span className="text-[color:var(--color-grey-300)]">Nombre del evento</span>}
                 </h3>
                 {form.eventDate && (
-                  <p className="text-xs font-semibold mb-1" style={{ color: "#0057A8" }}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-2">
                     {new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(form.eventDate))}
                   </p>
                 )}
-                {form.description && <p className="text-sm text-gray-500 mb-3 line-clamp-2">{form.description}</p>}
+                {form.description && (
+                  <p className="font-sans text-[13px] leading-[1.6] text-[color:var(--color-grey-600)] mb-4 line-clamp-2">
+                    {form.description}
+                  </p>
+                )}
                 <div className="mt-auto">
-                  <div className="block w-full py-3 rounded-xl font-display font-700 uppercase tracking-wider text-white text-sm text-center"
-                    style={{ background: "linear-gradient(135deg, #0057A8, #003D7A)" }}>
-                    Explorar fotos →
+                  <div className="block w-full py-3 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] font-mono text-[10px] uppercase tracking-[0.22em] text-center">
+                    Explorar fotos ↗
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 text-center pb-2">Arrastrá el banner para reencuadrar</p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-400)] text-center pb-3">
+                Arrastrá el banner para reencuadrar
+              </p>
             </div>
           ) : (
             <EventCard col={previewCol} preview />
           )}
         </div>
-        <p className="text-xs text-gray-300 text-center xl:text-left mt-3">Se actualiza mientras escribís</p>
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-400)] mt-4">
+          Se actualiza mientras escribís
+        </p>
       </div>
     </div>
   );
