@@ -18,10 +18,12 @@ let wmCacheExpiry = 0;
 
 // Module-level pg pool — reused across warm invocations.
 // max=1 because each Lambda container handles one request at a time.
+// Short idleTimeoutMillis so we don't exhaust Supabase's connection pool
+// when hundreds of warm Lambda containers are running concurrently.
 const pgPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 1,
-  idleTimeoutMillis: 60_000,
+  idleTimeoutMillis: 5_000,
   connectionTimeoutMillis: 5_000,
 });
 pgPool.on("error", (err) => console.error("[pg pool error]", err));
