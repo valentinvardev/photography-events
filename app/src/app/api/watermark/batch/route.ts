@@ -5,9 +5,9 @@ import { db } from "~/server/db";
 
 const lambda = new LambdaClient({ region: process.env.AWS_REGION ?? "us-east-2" });
 
-const CHUNK_SIZE = 10;
-const CHUNK_DELAY_MS = 250;
-const MAX_RETRIES = 4;
+const CHUNK_SIZE = 50;
+const CHUNK_DELAY_MS = 50;
+const MAX_RETRIES = 5;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
