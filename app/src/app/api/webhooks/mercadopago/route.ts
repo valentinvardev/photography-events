@@ -93,9 +93,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (newStatus === "APPROVED" && updated.downloadToken) {
-      const photoCount = await db.photo.count({
-        where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
-      });
+      let photoCount = 0;
+      if (updated.photoIds) {
+        try {
+          const parsed = JSON.parse(updated.photoIds) as unknown;
+          if (Array.isArray(parsed)) photoCount = parsed.length;
+        } catch { /* fall through */ }
+      }
+      if (photoCount === 0) {
+        // Legacy fallback for purchases without photoIds
+        photoCount = await db.photo.count({
+          where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
+        });
+      }
       void sendPurchaseApprovedEmail({
         to: updated.buyerEmail,
         buyerName: updated.buyerName,

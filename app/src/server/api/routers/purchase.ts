@@ -12,6 +12,16 @@ import {
 } from "~/server/api/trpc";
 import { db as dbInstance } from "~/server/db";
 
+function parsePhotoIds(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 const getMp = async (db: typeof dbInstance) => {
   const setting = await db.setting.findUnique({ where: { key: "mp_access_token" } });
   const token = setting?.value ?? env.MERCADOPAGO_ACCESS_TOKEN;
@@ -145,11 +155,15 @@ export const purchaseRouter = createTRPCRouter({
       if (!purchase) return null;
       if (purchase.status !== "APPROVED") return null;
 
+      const purchasedIds = parsePhotoIds(purchase.photoIds);
       const photos = await ctx.db.photo.findMany({
-        where: {
-          collectionId: purchase.collectionId,
-          bibNumber: purchase.bibNumber ?? undefined,
-        },
+        where: purchasedIds.length > 0
+          ? { id: { in: purchasedIds } }
+          : {
+              // Legacy fallback for purchases created before photoIds was tracked
+              collectionId: purchase.collectionId,
+              bibNumber: purchase.bibNumber ?? undefined,
+            },
         orderBy: { order: "asc" },
       });
 
@@ -283,9 +297,12 @@ export const purchaseRouter = createTRPCRouter({
         data: { status: "APPROVED", downloadToken: token, downloadTokenExpires: null },
         include: { collection: { select: { title: true } } },
       });
-      const photoCount = await ctx.db.photo.count({
-        where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
-      });
+      const purchasedIds = parsePhotoIds(updated.photoIds);
+      const photoCount = purchasedIds.length > 0
+        ? purchasedIds.length
+        : await ctx.db.photo.count({
+            where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
+          });
       void sendPurchaseApprovedEmail({
         to: updated.buyerEmail,
         buyerName: updated.buyerName,
