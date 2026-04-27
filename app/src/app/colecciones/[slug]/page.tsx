@@ -66,7 +66,7 @@ export default async function CollectionPage({
           logoUrl={collection.logoUrl}
           photoCount={collection._count.photos}
           price={price}
-          bannerFocalY={collection.bannerFocalY ?? 50}
+          bannerFocalY={(collection.bannerFocalY ?? 0.5) * 100}
         />
 
         {/* Gallery + search */}
