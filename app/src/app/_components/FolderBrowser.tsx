@@ -224,9 +224,11 @@ function trackEvent(type: string, collectionId: string) {
 export function FolderBrowser({
   collectionId,
   pricePerBib,
+  bibSearchEnabled = true,
 }: {
   collectionId: string;
   pricePerBib: number;
+  bibSearchEnabled?: boolean;
 }) {
   const { blurred } = usePhotoProtection();
   const PAGE_SIZE = 20;
@@ -483,27 +485,31 @@ export function FolderBrowser({
       <div className="mx-auto mb-20 max-w-3xl">
         <p className="eyebrow mb-5">Buscá tus fotos</p>
         <div className="border border-[color:var(--color-grey-300)] rounded-sm p-6 bg-white/40">
-          <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
-            Número
-          </label>
-          <div className="flex items-center gap-3 border-b-2 border-[color:var(--color-ink)] pb-3 focus-within:border-[color:var(--color-safelight)] transition-colors">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ej: 1042"
-              className="flex-1 bg-transparent border-0 outline-none font-display italic text-[44px] md:text-[72px] leading-none tracking-[-0.02em] text-[color:var(--color-ink)] placeholder:text-[color:var(--color-grey-300)]"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors shrink-0"
-              >
-                ×
-              </button>
-            )}
-          </div>
+          {bibSearchEnabled && (
+            <>
+              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
+                Número
+              </label>
+              <div className="flex items-center gap-3 border-b-2 border-[color:var(--color-ink)] pb-3 focus-within:border-[color:var(--color-safelight)] transition-colors">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ej: 1042"
+                  className="flex-1 bg-transparent border-0 outline-none font-display italic text-[44px] md:text-[72px] leading-none tracking-[-0.02em] text-[color:var(--color-ink)] placeholder:text-[color:var(--color-grey-300)]"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors shrink-0"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           <input
             ref={fileRef}
@@ -516,9 +522,11 @@ export function FolderBrowser({
             }}
           />
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+          <div className={`${bibSearchEnabled ? "mt-6" : ""} flex flex-wrap items-center justify-between gap-4`}>
             <p className="font-sans text-[14px] leading-[1.5] text-[color:var(--color-grey-700)] max-w-md">
-              Ingresá tu número o usá la búsqueda por selfie.{" "}
+              {bibSearchEnabled
+                ? "Ingresá tu número o usá la búsqueda por selfie. "
+                : "Subí una selfie y encontramos tus fotos con reconocimiento facial. "}
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)]">Las vistas previas tienen marca de agua.</span>
             </p>
             <button

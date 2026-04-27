@@ -19,7 +19,9 @@ export function CategoryCard({
   index?: number;
 }) {
   const num = String(index + 1).padStart(2, "0");
-  const href = cat.buttonHref ?? `#eventos`;
+  const href = cat.buttonHref && cat.buttonHref.trim().length > 0
+    ? cat.buttonHref
+    : `/categorias/${cat.slug}`;
 
   const inner = (
     <article className="group relative block">

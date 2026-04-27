@@ -58,7 +58,9 @@ export function EventSearchBar({
 
   const hrefFor = useCallback((r: Result) => {
     if (r.kind === "event") return `/colecciones/${r.item.slug}`;
-    return r.item.buttonHref ?? "#eventos";
+    return r.item.buttonHref && r.item.buttonHref.trim().length > 0
+      ? r.item.buttonHref
+      : `/categorias/${r.item.slug}`;
   }, []);
 
   // Close on outside click

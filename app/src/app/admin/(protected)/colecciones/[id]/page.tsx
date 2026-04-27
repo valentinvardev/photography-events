@@ -8,6 +8,8 @@ import { FaceReindexButton } from "~/app/_components/admin/FaceReindexButton";
 import { WatermarkAllButton } from "~/app/_components/admin/WatermarkAllButton";
 import { PricingPanel } from "~/app/_components/admin/PricingPanel";
 import { CategoryAssign } from "~/app/_components/admin/CategoryAssign";
+import { BannerEditor } from "~/app/_components/admin/BannerEditor";
+import { SearchSettings } from "~/app/_components/admin/SearchSettings";
 import { parseTiers } from "~/lib/pricing";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
@@ -197,6 +199,32 @@ export default async function EditCollectionPage({
             collectionId={id}
             initialCategoryId={collection.categoryId ?? null}
             categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
+          />
+        </div>
+        <div className="bg-[color:var(--color-paper)] p-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+            Búsqueda
+          </p>
+          <SearchSettings
+            collectionId={id}
+            initialBibSearchEnabled={collection.bibSearchEnabled ?? true}
+          />
+        </div>
+      </div>
+
+      {/* Apariencia — banner / logo */}
+      <div className="grid grid-cols-1 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
+        <div className="bg-[color:var(--color-paper)] p-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+            Apariencia
+          </p>
+          <BannerEditor
+            collectionId={id}
+            initialBannerUrl={collection.bannerUrl ?? null}
+            initialBannerKey={collection.bannerUrlRaw ?? null}
+            initialLogoUrl={collection.logoUrl ?? null}
+            initialLogoKey={collection.logoUrlRaw ?? null}
+            initialFocalY={collection.bannerFocalY ?? 0.5}
           />
         </div>
       </div>

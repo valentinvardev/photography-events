@@ -116,6 +116,17 @@ export function CollectionHero({
           ))}
         </h1>
 
+        {description && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.42, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-6 max-w-2xl font-sans text-[15px] md:text-[17px] leading-[1.6] text-[color:var(--color-paper)]/80"
+          >
+            {description}
+          </motion.p>
+        )}
+
         {/* Stats + CTA row */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

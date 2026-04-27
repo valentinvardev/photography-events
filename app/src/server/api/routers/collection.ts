@@ -100,6 +100,9 @@ export const collectionRouter = createTRPCRouter({
         coverUrl: await resolveCover(col.coverUrl),
         logoUrl: await resolveUrl(col.logoUrl),
         bannerUrl: await resolveUrl(col.bannerUrl),
+        // Raw storage keys for editing (so admin UI can save without re-resolving)
+        bannerUrlRaw: col.bannerUrl,
+        logoUrlRaw: col.logoUrl,
       };
     }),
 
@@ -146,6 +149,7 @@ export const collectionRouter = createTRPCRouter({
         packPrice: z.number().min(0).optional().nullable(),
         discountTiers: z.array(z.object({ minQty: z.number().int().positive(), priceEach: z.number().min(0) })).optional().nullable(),
         isPublished: z.boolean().optional(),
+        bibSearchEnabled: z.boolean().optional(),
         eventDate: z.string().optional().nullable(),
         categoryId: z.string().optional().nullable(),
       }),

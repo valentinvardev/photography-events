@@ -70,7 +70,11 @@ export default async function CollectionPage({
         />
 
         {/* Gallery + search */}
-        <FolderBrowser collectionId={collection.id} pricePerBib={price} />
+        <FolderBrowser
+          collectionId={collection.id}
+          pricePerBib={price}
+          bibSearchEnabled={collection.bibSearchEnabled ?? true}
+        />
 
         {/* MercadoPago strip */}
         <section className="px-6 md:px-10 py-24 border-t border-[color:var(--color-grey-300)]">

@@ -27,6 +27,32 @@ export const categoryRouter = createTRPCRouter({
     return Promise.all(cats.map(async (c) => ({ ...c, coverUrl: await resolveCover(c.coverUrl) })));
   }),
 
+  getBySlug: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const cat = await ctx.db.category.findUnique({
+        where: { slug: input.slug },
+        include: {
+          collections: {
+            where: { isPublished: true },
+            orderBy: [{ order: "asc" }, { eventDate: "desc" }, { createdAt: "desc" }],
+            include: { _count: { select: { photos: true } } },
+          },
+        },
+      });
+      if (!cat) return null;
+      const cover = await resolveCover(cat.coverUrl);
+      const collections = await Promise.all(
+        cat.collections.map(async (c) => ({
+          ...c,
+          coverUrl: await resolveCover(c.coverUrl),
+          bannerUrl: await resolveCover(c.bannerUrl),
+          logoUrl: await resolveCover(c.logoUrl),
+        })),
+      );
+      return { ...cat, coverUrl: cover, collections };
+    }),
+
   adminList: protectedProcedure.query(async ({ ctx }) => {
     const cats = await ctx.db.category.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],

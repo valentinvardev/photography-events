@@ -83,6 +83,7 @@ model Collection {
     currency         String    @default("ARS")
     isPublished      Boolean   @default(false)
     isFree           Boolean   @default(false) // True = photos accessible without purchase
+    bibSearchEnabled Boolean   @default(true)  // False = hide bib number search, only allow face/selfie
     // Watermark image applied to previews for this collection (storage key)
     watermarkStorageKey String?
     // AWS Rekognition collection ID for face search indexing
