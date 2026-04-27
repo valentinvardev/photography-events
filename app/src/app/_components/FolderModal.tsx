@@ -114,8 +114,12 @@ export function BibCheckoutModal({
   const basePrice = collectionInfo?.price ?? 0;
   const tiers = parseTiers(collectionInfo?.discountTiers);
   const packPrice = collectionInfo?.packPrice ?? null;
-  const effectiveBase = calcEffectivePricePerPhoto(totalPhotosInSearch, basePrice, tiers);
-  const activeTier = tiers.slice().reverse().find((t) => totalPhotosInSearch >= t.minQty);
+  // Tier qualification is based on the cart quantity (photos being purchased),
+  // not the total found in the search context.
+  const cartQty = packMode ? allPhotoIds.length : photoIds.length;
+  const effectiveBase = calcEffectivePricePerPhoto(cartQty, basePrice, tiers);
+  const activeTier = tiers.slice().reverse().find((t) => cartQty >= t.minQty);
+  const nextTier = tiers.find((t) => cartQty < t.minQty);
 
   // Per-photo prices: use custom price if different from base, else effective tier price
   const priceById = new Map(cartItems.map((i) => [i.photoId, i.price]));
@@ -225,12 +229,23 @@ export function BibCheckoutModal({
                   transition={{ duration: 0.3 }}
                 >
                   {/* Active tier badge */}
-                  {activeTier && (
+                  {activeTier && !packMode && (
                     <div className="mb-5 flex items-center gap-3 border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] shrink-0" />
                       <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#16a34a]">
-                        Descuento activo · {totalPhotosInSearch} foto{totalPhotosInSearch !== 1 ? "s" : ""} en tu búsqueda
+                        Descuento activo · {cartQty} foto{cartQty !== 1 ? "s" : ""}
                         · ${effectiveBase.toLocaleString("es-AR")} c/u
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Next tier hint */}
+                  {!activeTier && nextTier && !packMode && cartQty > 0 && (
+                    <div className="mb-5 flex items-center gap-3 border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-100)] px-4 py-3">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-grey-500)] shrink-0" />
+                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)]">
+                        Sumá {nextTier.minQty - cartQty} foto{nextTier.minQty - cartQty !== 1 ? "s" : ""} más y
+                        pagás ${nextTier.priceEach.toLocaleString("es-AR")} c/u
                       </p>
                     </div>
                   )}

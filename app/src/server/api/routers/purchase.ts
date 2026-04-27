@@ -53,9 +53,9 @@ export const purchaseRouter = createTRPCRouter({
         totalAmount = Number(collection.packPrice);
       } else {
         const tiers = parseTiers(collection.discountTiers);
-        const totalInSearch = input.totalPhotosInSearch ?? photos.length;
         const basePrice = Number(collection.pricePerBib);
-        const effectiveBase = calcEffectivePricePerPhoto(totalInSearch, basePrice, tiers);
+        // Tier qualification: cart quantity (photos being purchased), not search total.
+        const effectiveBase = calcEffectivePricePerPhoto(photos.length, basePrice, tiers);
         totalAmount = photos.reduce((sum, p) => {
           const custom = p.price !== null ? Number(p.price) : null;
           return sum + (custom !== null && custom !== basePrice ? custom : effectiveBase);
