@@ -142,6 +142,21 @@ export const purchaseRouter = createTRPCRouter({
       return purchase?.downloadToken ?? null;
     }),
 
+  /** Public: poll a purchase status by its id (used by /descarga/pendiente). */
+  getStatus: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const purchase = await ctx.db.purchase.findUnique({
+        where: { id: input.id },
+        select: { status: true, downloadToken: true },
+      });
+      if (!purchase) return null;
+      return {
+        status: purchase.status,
+        downloadToken: purchase.status === "APPROVED" ? purchase.downloadToken : null,
+      };
+    }),
+
   getDownloadInfo: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ ctx, input }) => {
