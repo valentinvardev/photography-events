@@ -51,16 +51,15 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     }
   }, [missingCount, state, progress.total, router]);
 
-  const runLambda = async (ids: string[]) => {
+  const runLambda = async (ids: string[], onlyMissing: boolean) => {
     setState("running-lambda");
     setProgress({ done: 0, total: ids.length });
     setFailed([]);
 
-    // Fire all Lambdas at once
     const res = await fetch("/api/watermark/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collectionId }),
+      body: JSON.stringify({ collectionId, onlyMissing }),
     });
 
     if (!res.ok) {
@@ -98,10 +97,9 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
     router.refresh();
   };
 
-  const run = async (ids: string[]) => {
+  const run = async (ids: string[], onlyMissing: boolean) => {
     if (ids.length === 0) return;
-    // Try Lambda first, fall back to local
-    await runLambda(ids);
+    await runLambda(ids, onlyMissing);
   };
 
   // Cleanup on unmount
@@ -167,7 +165,7 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
           Todas con marca de agua
         </span>
         <button
-          onClick={() => void run(allIds ?? [])}
+          onClick={() => void run(allIds ?? [], false)}
           className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] underline underline-offset-2 transition-colors"
         >
           Reaplicar todas ({totalCount})
@@ -179,13 +177,13 @@ export function WatermarkAllButton({ collectionId }: { collectionId: string }) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <button
-        onClick={() => void run(unwatermarked ?? [])}
+        onClick={() => void run(unwatermarked ?? [], true)}
         className="px-2.5 py-1 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors"
       >
         Aplicar marca ({missingCount} sin marca)
       </button>
       <button
-        onClick={() => void run(allIds ?? [])}
+        onClick={() => void run(allIds ?? [], false)}
         className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] underline underline-offset-2 transition-colors"
       >
         Reaplicar todas ({totalCount})
