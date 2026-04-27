@@ -8,7 +8,7 @@ const { Client } = pg;
 const s3 = new S3Client({ region: process.env.BUCKET_REGION });
 const BUCKET = process.env.BUCKET_NAME;
 const S3_PREFIX = process.env.BUCKET_PREFIX
-  ? process.env.AWS_S3_PREFIX.replace(/\/?$/, "/")
+  ? process.env.BUCKET_PREFIX.replace(/\/?$/, "/")
   : "";
 const WATERMARK_KEY = "watermarks/active.png";
 
