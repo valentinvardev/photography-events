@@ -58,7 +58,7 @@ export function Nav() {
             Buscá tu foto
           </Link>
           <a
-            href="https://wa.me/5493515551234"
+            href="https://wa.me/5493518000368"
             target="_blank"
             rel="noopener"
             className={`hidden md:flex flex-row items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.22em] hover:opacity-70 transition-all duration-500 ${scrolled ? "text-[color:var(--color-ink)]" : "text-[color:var(--color-paper)]"}`}

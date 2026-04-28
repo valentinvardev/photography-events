@@ -36,15 +36,18 @@ export default async function CollectionPage({
         <nav className="sticky top-0 z-50 bg-[color:var(--color-paper)]/85 backdrop-blur-xl border-b border-[color:var(--color-grey-300)]">
           <div className="max-w-[1600px] mx-auto px-6 md:px-10 h-16 flex items-center gap-6">
             <Link
-              href="/"
+              href="/#eventos"
               className="link-draw font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-700)] hover:text-[color:var(--color-ink)] transition-colors flex items-center gap-2 shrink-0"
             >
               <span aria-hidden>←</span>
               Eventos
             </Link>
-            <span className="font-display italic text-[18px] hidden sm:inline shrink-0">
+            <Link
+              href="/"
+              className="font-display italic text-[18px] hidden sm:inline shrink-0 hover:opacity-70 transition-opacity"
+            >
               Ivana Maritano
-            </span>
+            </Link>
             <span
               className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] truncate"
               title={collection.title}

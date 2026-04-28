@@ -9,6 +9,7 @@ import { Hero } from "~/app/_components/design/Hero";
 import { Reveal } from "~/app/_components/design/Reveal";
 import { MagneticButton } from "~/app/_components/design/MagneticButton";
 import { EventSearchBar } from "~/app/_components/EventSearchBar";
+import { OrganizerCTA } from "~/app/_components/OrganizerModal";
 
 export default async function HomePage() {
   const [rawCollections, categories] = await Promise.all([
@@ -152,12 +153,7 @@ export default async function HomePage() {
                 >
                   Ver eventos
                 </MagneticButton>
-                <Link
-                  href="#contacto"
-                  className="link-draw font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/80"
-                >
-                  ¿Sos organizador? Hablemos
-                </Link>
+                <OrganizerCTA />
               </div>
             </Reveal>
           </div>
@@ -205,47 +201,61 @@ export default async function HomePage() {
             </Reveal>
 
             <Reveal delay={0.1}>
-              <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
-                  <p className="font-display italic text-[20px] leading-[1.4] text-[color:var(--color-ink)]">
-                    Mientras caminábamos al colegio, mi hijo me preguntó:<br />
-                    <span className="text-[color:var(--color-grey-500)]">—Mami, ¿qué es lo que más te gusta de ser fotógrafa?</span>
-                  </p>
-                  <p>Mi respuesta salió simple.</p>
-                  <p>
-                    Que tengo un superpoder.<br />
-                    El de congelar el tiempo.<br />
-                    El de hacer eterno lo efímero.<br />
-                    El de encontrar, en cada click, una forma de vencer al olvido.
-                  </p>
-                  <p>
-                    Porque la vida no se detiene.<br />
-                    El instante se escapa.<br />
-                    El cuerpo cambia, los hijos crecen, la luz se apaga.
-                  </p>
-                  <p className="font-display italic text-[18px] text-[color:var(--color-ink)]">
-                    Pero ahí está la foto, latiendo todavía.
-                  </p>
+              <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
+                {/* Profile photo */}
+                <div className="relative overflow-hidden bg-[color:var(--color-grey-300)]" style={{ aspectRatio: "3/4" }}>
+                  <Image
+                    src="/fotoivana.jpeg"
+                    alt="Ivana Maritano"
+                    fill
+                    className="object-cover object-top"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
                 </div>
 
-                <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
-                  <p>
-                    Hace más de 20 años que la cámara es una extensión de mi cuerpo.
-                    Durante años estuve dedicada a la fotografía deportiva en el fútbol, donde aprendí a anticipar,
-                    a leer lo que va a pasar y a no fallar en el momento clave.
-                  </p>
-                  <p>
-                    Hoy trabajo en deportes, institucionales y eventos sociales, con el mismo criterio:
-                    conseguir las fotos que realmente importan.
-                  </p>
-                  <p>
-                    Por eso este espacio existe. Para que, entre todo lo que pasa, puedas encontrarte.
-                    Y quedarte con eso.
-                  </p>
-                  <p>
-                    Y también para que quienes necesitan que su evento, su marca o su historia esté bien contada,
-                    tengan a quién llamar. Con intención. Con criterio. Con imágenes que realmente funcionen.
-                  </p>
+                {/* Text — two sub-columns on wider screens */}
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-10">
+                  <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
+                    <p className="font-sans font-bold text-[16px] leading-[1.65] text-[color:var(--color-ink)]">
+                      Mientras caminábamos al colegio, mi hijo me preguntó:<br />
+                      <span className="font-normal text-[color:var(--color-grey-500)]">—Mami, ¿qué es lo que más te gusta de ser fotógrafa?</span>
+                    </p>
+                    <p>Mi respuesta salió simple.</p>
+                    <p>
+                      Que tengo un superpoder.<br />
+                      El de congelar el tiempo.<br />
+                      El de hacer eterno lo efímero.<br />
+                      El de encontrar, en cada click, una forma de vencer al olvido.
+                    </p>
+                    <p>
+                      Porque la vida no se detiene.<br />
+                      El instante se escapa.<br />
+                      El cuerpo cambia, los hijos crecen, la luz se apaga.
+                    </p>
+                    <p className="font-sans font-bold text-[16px] leading-[1.65] text-[color:var(--color-ink)]">
+                      Pero ahí está la foto, latiendo todavía.
+                    </p>
+                  </div>
+
+                  <div className="font-sans text-[16px] leading-[1.8] text-[color:var(--color-grey-700)] flex flex-col gap-5">
+                    <p>
+                      Hace más de 20 años que la cámara es una extensión de mi cuerpo.
+                      Durante años estuve dedicada a la fotografía deportiva en el fútbol, donde aprendí a anticipar,
+                      a leer lo que va a pasar y a no fallar en el momento clave.
+                    </p>
+                    <p>
+                      Hoy trabajo en deportes, institucionales y eventos sociales, con el mismo criterio:
+                      conseguir las fotos que realmente importan.
+                    </p>
+                    <p>
+                      Por eso este espacio existe. Para que, entre todo lo que pasa, puedas encontrarte.
+                      Y quedarte con eso.
+                    </p>
+                    <p>
+                      Y también para que quienes necesitan que su evento, su marca o su historia esté bien contada,
+                      tengan a quién llamar. Con intención. Con criterio. Con imágenes que realmente funcionen.
+                    </p>
+                  </div>
                 </div>
               </div>
             </Reveal>

@@ -367,6 +367,8 @@ export function FolderBrowser({
   useEffect(() => { visiblePhotosRef.current = visiblePhotos; }, [visiblePhotos]);
   const mimeTypeMapRef = useRef(mimeTypeMap);
   useEffect(() => { mimeTypeMapRef.current = mimeTypeMap; }, [mimeTypeMap]);
+  const urlMapRef = useRef(urlMap);
+  useEffect(() => { urlMapRef.current = urlMap; }, [urlMap]);
 
   // Stable handlers — same reference across renders, so memo'd tiles don't re-render
   const handleOpenLightbox = useCallback((photoId: string, bibNumber: string | null, url: string) => {
@@ -397,6 +399,36 @@ export function FolderBrowser({
     },
     [toggleCart, collectionId],
   );
+
+  const handleLightboxPrev = useCallback(() => {
+    setLightbox((lb) => {
+      if (!lb) return lb;
+      const vp = visiblePhotosRef.current;
+      if (vp.length <= 1) return lb;
+      const prevIdx = (lb.currentIndex - 1 + vp.length) % vp.length;
+      const prev = vp[prevIdx];
+      if (!prev) return lb;
+      const url = urlMapRef.current.get(prev.id);
+      if (!url) return lb;
+      const meta = mimeTypeMapRef.current.get(prev.id);
+      return { ...lb, url, mimeType: meta?.mimeType ?? null, filename: meta?.filename ?? null, bibNumber: prev.bibNumber, currentIndex: prevIdx };
+    });
+  }, []);
+
+  const handleLightboxNext = useCallback(() => {
+    setLightbox((lb) => {
+      if (!lb) return lb;
+      const vp = visiblePhotosRef.current;
+      if (vp.length <= 1) return lb;
+      const nextIdx = (lb.currentIndex + 1) % vp.length;
+      const next = vp[nextIdx];
+      if (!next) return lb;
+      const url = urlMapRef.current.get(next.id);
+      if (!url) return lb;
+      const meta = mimeTypeMapRef.current.get(next.id);
+      return { ...lb, url, mimeType: meta?.mimeType ?? null, filename: meta?.filename ?? null, bibNumber: next.bibNumber, currentIndex: nextIdx };
+    });
+  }, []);
 
   const cartCheckout = useCallback(() => {
     const items = cartItemsRef.current;
@@ -748,9 +780,31 @@ export function FolderBrowser({
                     <span className="transition-transform group-hover:-translate-x-1">←</span>
                     <span>Anterior</span>
                   </button>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-                    {galleryPage + 1} / {Math.ceil(allPhotos.length / PAGE_SIZE)}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.ceil(allPhotos.length / PAGE_SIZE)}
+                      key={galleryPage}
+                      defaultValue={galleryPage + 1}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const v = parseInt((e.target as HTMLInputElement).value, 10);
+                          const maxP = Math.ceil(allPhotos.length / PAGE_SIZE);
+                          if (v >= 1 && v <= maxP) { setGalleryPage(v - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        const maxP = Math.ceil(allPhotos.length / PAGE_SIZE);
+                        if (v >= 1 && v <= maxP && v - 1 !== galleryPage) { setGalleryPage(v - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }
+                      }}
+                      className="w-10 text-center font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-grey-600)] border-b border-[color:var(--color-grey-400)] bg-transparent outline-none focus:border-[color:var(--color-ink)] focus:text-[color:var(--color-ink)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                      / {Math.ceil(allPhotos.length / PAGE_SIZE)}
+                    </span>
+                  </div>
                   <button
                     onClick={() => { setGalleryPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                     disabled={(galleryPage + 1) * PAGE_SIZE >= allPhotos.length}
@@ -781,6 +835,10 @@ export function FolderBrowser({
         mimeType={lightbox?.mimeType ?? null}
         filename={lightbox?.filename ?? null}
         onClose={() => setLightbox(null)}
+        onPrev={visiblePhotos.length > 1 ? handleLightboxPrev : undefined}
+        onNext={visiblePhotos.length > 1 ? handleLightboxNext : undefined}
+        index={lightbox?.currentIndex}
+        total={visiblePhotos.length}
         caption={
           lightbox && (
             <div className="flex items-center justify-between gap-4 max-w-[1600px] mx-auto">
