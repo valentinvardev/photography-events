@@ -38,6 +38,7 @@ export function PhotoGallery({
   const [shareState, setShareState] = useState<"idle" | "copied">("idle");
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [showDownloadPanel, setShowDownloadPanel] = useState(false);
+  const [downloadPanelPhotos, setDownloadPanelPhotos] = useState<Photo[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const isTouchDevice = () =>
@@ -112,10 +113,22 @@ export function PhotoGallery({
     }
   };
 
-  const handleDownloadSelected = () => void downloadPhotos(Array.from(selected).sort());
+  const openDownloadPanel = (photosToDownload: Photo[]) => {
+    setDownloadPanelPhotos(photosToDownload);
+    setShowDownloadPanel(true);
+  };
+
+  const handleDownloadSelected = () => {
+    const selectedPhotos = Array.from(selected).sort().map((i) => photos[i]!);
+    if (isTouchDevice()) {
+      openDownloadPanel(selectedPhotos);
+      return;
+    }
+    void downloadPhotos(Array.from(selected).sort());
+  };
   const handleDownloadAll = async () => {
     if (isTouchDevice()) {
-      setShowDownloadPanel(true);
+      openDownloadPanel(photos);
       return;
     }
     setDownloadingAll(true);
@@ -320,13 +333,19 @@ export function PhotoGallery({
                   <span>F. {String(i + 1).padStart(3, "0")}</span>
                   {selectMode && (
                     <span
-                      className={`inline-block w-3 h-3 border ${
+                      className={`inline-flex items-center justify-center w-4 h-4 border ${
                         isSelected
                           ? "bg-[color:var(--color-ink)] border-[color:var(--color-ink)]"
                           : "border-[color:var(--color-grey-500)]"
                       }`}
                       aria-hidden
-                    />
+                    >
+                      {isSelected && (
+                        <svg width="8" height="8" viewBox="0 0 10 8" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="1,4 4,7 9,1" />
+                        </svg>
+                      )}
+                    </span>
                   )}
                 </p>
                 <div
@@ -464,7 +483,7 @@ export function PhotoGallery({
                     Descargas
                   </p>
                   <p className="font-display italic text-[22px] leading-tight text-[color:var(--color-ink)]">
-                    {photos.length} foto{photos.length !== 1 ? "s" : ""}
+                    {downloadPanelPhotos.length} foto{downloadPanelPhotos.length !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <button
@@ -480,7 +499,7 @@ export function PhotoGallery({
 
               {/* List */}
               <div className="overflow-y-auto flex-1">
-                {photos.map((photo, i) => (
+                {downloadPanelPhotos.map((photo, i) => (
                   <a
                     key={photo.id}
                     href={`/api/download/file?token=${encodeURIComponent(token)}&photoId=${encodeURIComponent(photo.id)}`}
