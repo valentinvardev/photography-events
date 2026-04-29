@@ -83,23 +83,28 @@ export function PhotoGallery({
     clearSelection();
   };
 
-  // Downloads a single photo via the server-side proxy (same-origin, no CORS issues).
-  const downloadPhoto = (photoId: string, filename: string) => {
+  // Fetches from same-origin proxy → blob URL → forced download.
+  // Blob URLs with a.download always trigger a save dialog regardless of content type.
+  const downloadPhoto = async (photoId: string, filename: string) => {
+    const proxyUrl = `/api/download/file?token=${encodeURIComponent(token)}&photoId=${encodeURIComponent(photoId)}`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = `/api/download/file?token=${encodeURIComponent(token)}&photoId=${encodeURIComponent(photoId)}`;
+    a.href = blobUrl;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
   };
 
-  // For "download all", trigger each file sequentially with a short delay so
-  // the browser has time to initiate each download before the next one starts.
   const downloadPhotos = async (indices: number[]) => {
     for (let i = 0; i < indices.length; i++) {
       const photo = photos[indices[i]!]!;
-      downloadPhoto(photo.id, photo.filename);
-      if (i < indices.length - 1) await new Promise((r) => setTimeout(r, 800));
+      await downloadPhoto(photo.id, photo.filename);
+      if (i < indices.length - 1) await new Promise((r) => setTimeout(r, 300));
     }
   };
 
@@ -356,7 +361,7 @@ export function PhotoGallery({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          downloadPhoto(photo.id, photo.filename);
+                          void downloadPhoto(photo.id, photo.filename);
                         }}
                         className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)] border border-[color:var(--color-paper)] px-3 py-1.5 hover:bg-[color:var(--color-paper)] hover:text-[color:var(--color-ink)] transition-colors"
                       >
@@ -453,7 +458,7 @@ export function PhotoGallery({
               </div>
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => downloadPhoto(currentPhoto.id, currentPhoto.filename)}
+                  onClick={() => void downloadPhoto(currentPhoto.id, currentPhoto.filename)}
                   className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-4 py-2.5 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
                 >
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em]">Descargar</span>
