@@ -24,6 +24,7 @@ type Props = {
 const PAGE_SIZE = 24;
 
 export function PhotoGallery({
+  token,
   bibNumber,
   collectionTitle,
   buyerName,
@@ -82,28 +83,23 @@ export function PhotoGallery({
     clearSelection();
   };
 
-  const downloadPhoto = async (url: string, filename: string) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-    } catch {
-      window.open(url, "_blank");
-    }
+  // Downloads a single photo via the server-side proxy (same-origin, no CORS issues).
+  const downloadPhoto = (photoId: string, filename: string) => {
+    const a = document.createElement("a");
+    a.href = `/api/download/file?token=${encodeURIComponent(token)}&photoId=${encodeURIComponent(photoId)}`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
+  // For "download all", trigger each file sequentially with a short delay so
+  // the browser has time to initiate each download before the next one starts.
   const downloadPhotos = async (indices: number[]) => {
     for (let i = 0; i < indices.length; i++) {
       const photo = photos[indices[i]!]!;
-      await downloadPhoto(photo.url, photo.filename);
-      if (i < indices.length - 1) await new Promise((r) => setTimeout(r, 400));
+      downloadPhoto(photo.id, photo.filename);
+      if (i < indices.length - 1) await new Promise((r) => setTimeout(r, 800));
     }
   };
 
@@ -360,7 +356,7 @@ export function PhotoGallery({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          void downloadPhoto(photo.url, photo.filename);
+                          downloadPhoto(photo.id, photo.filename);
                         }}
                         className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)] border border-[color:var(--color-paper)] px-3 py-1.5 hover:bg-[color:var(--color-paper)] hover:text-[color:var(--color-ink)] transition-colors"
                       >
@@ -457,7 +453,7 @@ export function PhotoGallery({
               </div>
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => void downloadPhoto(currentPhoto.url, currentPhoto.filename)}
+                  onClick={() => downloadPhoto(currentPhoto.id, currentPhoto.filename)}
                   className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-4 py-2.5 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
                 >
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em]">Descargar</span>
