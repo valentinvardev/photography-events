@@ -37,7 +37,11 @@ export function PhotoGallery({
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [shareState, setShareState] = useState<"idle" | "copied">("idle");
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [showDownloadPanel, setShowDownloadPanel] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const isTouchDevice = () =>
+    typeof navigator !== "undefined" && navigator.maxTouchPoints > 1;
 
   const visiblePhotos = photos.slice(0, visibleCount);
   const hasMore = visibleCount < photos.length;
@@ -110,6 +114,10 @@ export function PhotoGallery({
 
   const handleDownloadSelected = () => void downloadPhotos(Array.from(selected).sort());
   const handleDownloadAll = async () => {
+    if (isTouchDevice()) {
+      setShowDownloadPanel(true);
+      return;
+    }
     setDownloadingAll(true);
     await downloadPhotos(photos.map((_, i) => i));
     setDownloadingAll(false);
@@ -426,6 +434,75 @@ export function PhotoGallery({
                 </span>
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile download panel ─────────────────────── */}
+      <AnimatePresence>
+        {showDownloadPanel && (
+          <motion.div
+            key="dl-panel"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[color:var(--color-ink)]/60 flex flex-col justify-end"
+            onClick={() => setShowDownloadPanel(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[color:var(--color-paper)] rounded-t-none max-h-[80dvh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[color:var(--color-grey-300)] shrink-0">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+                    Descargas
+                  </p>
+                  <p className="font-display italic text-[22px] leading-tight text-[color:var(--color-ink)]">
+                    {photos.length} foto{photos.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDownloadPanel(false)}
+                  className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)]"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <p className="px-6 py-3 font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--color-grey-500)] border-b border-[color:var(--color-grey-300)] shrink-0">
+                Tocá cada foto para descargarla
+              </p>
+
+              {/* List */}
+              <div className="overflow-y-auto flex-1">
+                {photos.map((photo, i) => (
+                  <a
+                    key={photo.id}
+                    href={`/api/download/file?token=${encodeURIComponent(token)}&photoId=${encodeURIComponent(photo.id)}`}
+                    download={photo.filename}
+                    className="flex items-center gap-4 px-6 py-3.5 border-b border-[color:var(--color-grey-200)] hover:bg-[color:var(--color-grey-100)] active:bg-[color:var(--color-grey-200)] transition-colors"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt=""
+                      className="w-12 h-12 object-cover shrink-0 bg-[color:var(--color-grey-300)]"
+                    />
+                    <span className="flex-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--color-ink)] truncate">
+                      {String(i + 1).padStart(3, "0")} · {photo.filename}
+                    </span>
+                    <span className="font-mono text-[10px] tracking-[0.14em] text-[color:var(--color-grey-500)] shrink-0">
+                      ↓
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
