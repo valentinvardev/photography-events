@@ -7,6 +7,7 @@ import { CartProvider } from "~/app/_components/CartContext";
 import { NavCartButton } from "~/app/_components/NavCartButton";
 import { Footer } from "~/app/_components/design/Footer";
 import { CollectionHero } from "~/app/_components/design/CollectionHero";
+import { parseTiers } from "~/lib/pricing";
 
 export default async function CollectionPage({
   params,
@@ -28,6 +29,7 @@ export default async function CollectionPage({
     : null;
 
   const price = Number(collection.pricePerBib);
+  const tiers = parseTiers(collection.discountTiers);
 
   return (
     <CartProvider>
@@ -76,6 +78,7 @@ export default async function CollectionPage({
         <FolderBrowser
           collectionId={collection.id}
           pricePerBib={price}
+          discountTiers={tiers}
           bibSearchEnabled={collection.bibSearchEnabled ?? true}
         />
 

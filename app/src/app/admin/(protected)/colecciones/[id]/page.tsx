@@ -7,6 +7,7 @@ import { CollectionActions } from "~/app/_components/admin/CollectionActions";
 import { FaceReindexButton } from "~/app/_components/admin/FaceReindexButton";
 import { WatermarkAllButton } from "~/app/_components/admin/WatermarkAllButton";
 import { PricingPanel } from "~/app/_components/admin/PricingPanel";
+import { CollectionMetaPanel } from "~/app/_components/admin/CollectionMetaPanel";
 import { CategoryAssign } from "~/app/_components/admin/CategoryAssign";
 import { BannerEditor } from "~/app/_components/admin/BannerEditor";
 import { SearchSettings } from "~/app/_components/admin/SearchSettings";
@@ -170,6 +171,20 @@ export default async function EditCollectionPage({
           <FaceReindexButton collectionId={collection.id} totalPhotos={totalCount} />
           <WatermarkAllButton collectionId={collection.id} />
         </div>
+      </div>
+
+      {/* Metadata panel */}
+      <div className="border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] p-6 mb-px">
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+          Datos del evento
+        </p>
+        <CollectionMetaPanel
+          collectionId={id}
+          initialTitle={collection.title}
+          initialDescription={collection.description}
+          initialSlug={collection.slug}
+          initialEventDate={collection.eventDate ? new Date(collection.eventDate) : null}
+        />
       </div>
 
       {/* Three-column layout: upload / pricing / category */}

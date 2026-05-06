@@ -8,7 +8,7 @@ import { useCart } from "~/app/_components/CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
 import { Field } from "~/app/_components/design/Field";
 import { Lightbox } from "~/app/_components/design/Lightbox";
-import { parseTiers, calcEffectivePricePerPhoto } from "~/lib/pricing";
+import { parseTiers, calcEffectivePricePerPhoto, tierLabel } from "~/lib/pricing";
 
 type Step = "cart" | "buy" | "email";
 
@@ -119,7 +119,8 @@ export function BibCheckoutModal({
   const cartQty = packMode ? allPhotoIds.length : photoIds.length;
   const effectiveBase = calcEffectivePricePerPhoto(cartQty, basePrice, tiers);
   const activeTier = tiers.slice().reverse().find((t) => cartQty >= t.minQty);
-  const nextTier = tiers.find((t) => cartQty < t.minQty);
+  // First tier the cart hasn't yet reached (tiers are sorted by minQty asc).
+  const nextTier = tiers.find((t) => t.minQty > cartQty);
 
   // Per-photo prices: use custom price if different from base, else effective tier price
   const priceById = new Map(cartItems.map((i) => [i.photoId, i.price]));
@@ -240,12 +241,12 @@ export function BibCheckoutModal({
                   )}
 
                   {/* Next tier hint */}
-                  {!activeTier && nextTier && !packMode && cartQty > 0 && (
+                  {nextTier && !packMode && cartQty > 0 && (
                     <div className="mb-5 flex items-center gap-3 border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-100)] px-4 py-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-grey-500)] shrink-0" />
                       <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-600)]">
                         Sumá {nextTier.minQty - cartQty} foto{nextTier.minQty - cartQty !== 1 ? "s" : ""} más y
-                        pagás ${nextTier.priceEach.toLocaleString("es-AR")} c/u
+                        ahorrá · {tierLabel(nextTier)}
                       </p>
                     </div>
                   )}

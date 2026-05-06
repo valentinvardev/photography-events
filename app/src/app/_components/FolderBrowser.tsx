@@ -7,6 +7,7 @@ import { BibCheckoutModal } from "~/app/_components/FolderModal";
 import { useCart } from "~/app/_components/CartContext";
 import { Lightbox } from "~/app/_components/design/Lightbox";
 import { usePhotoProtection } from "~/app/_components/usePhotoProtection";
+import { tierLabel } from "~/lib/pricing";
 
 // ─── Photo tile ───────────────────────────────────────────────────────────────
 // URL is passed from parent batch query — no per-tile API call.
@@ -137,11 +138,13 @@ const PhotoTile = memo(function PhotoTile({
 const CartBar = memo(function CartBar({
   count,
   total,
+  discountHint,
   onCheckout,
   onClear,
 }: {
   count: number;
   total: number;
+  discountHint: string | null;
   onCheckout: () => void;
   onClear: () => void;
 }) {
@@ -155,35 +158,43 @@ const CartBar = memo(function CartBar({
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[min(560px,calc(100vw-32px))]"
         >
-          <div className="flex items-center gap-3 px-4 sm:px-5 py-4 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 hidden sm:inline">
-              ({String(count).padStart(2, "0")})
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60">
-                Carrito
-              </p>
-              <p className="font-display italic text-[20px] leading-tight truncate">
-                {count} {count === 1 ? "foto" : "fotos"} ·{" "}
-                <span className="text-[color:var(--color-paper)]/65">
-                  {total > 0 ? `$${total.toLocaleString("es-AR")}` : "—"}
-                </span>
-              </p>
+          <div className="flex flex-col bg-[color:var(--color-ink)] text-[color:var(--color-paper)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+            {discountHint && (
+              <div className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-[#16a34a] text-[color:var(--color-paper)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-paper)] shrink-0" />
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em]">{discountHint}</p>
+              </div>
+            )}
+            <div className="flex items-center gap-3 px-4 sm:px-5 py-4">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 hidden sm:inline">
+                ({String(count).padStart(2, "0")})
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60">
+                  Carrito
+                </p>
+                <p className="font-display italic text-[20px] leading-tight truncate">
+                  {count} {count === 1 ? "foto" : "fotos"} ·{" "}
+                  <span className="text-[color:var(--color-paper)]/65">
+                    {total > 0 ? `$${total.toLocaleString("es-AR")}` : "—"}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={onClear}
+                className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 hover:text-[color:var(--color-paper)] transition-colors px-2"
+                aria-label="Vaciar"
+              >
+                [×]
+              </button>
+              <button
+                onClick={onCheckout}
+                className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-4 py-2.5 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em]">Comprar</span>
+                <span className="font-mono text-[10px] tracking-[0.22em] transition-transform group-hover:translate-x-1">→</span>
+              </button>
             </div>
-            <button
-              onClick={onClear}
-              className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/60 hover:text-[color:var(--color-paper)] transition-colors px-2"
-              aria-label="Vaciar"
-            >
-              [×]
-            </button>
-            <button
-              onClick={onCheckout}
-              className="group inline-flex items-center gap-3 border border-[color:var(--color-paper)] bg-[color:var(--color-paper)] text-[color:var(--color-ink)] px-4 py-2.5 hover:bg-transparent hover:text-[color:var(--color-paper)] transition-colors"
-            >
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em]">Comprar</span>
-              <span className="font-mono text-[10px] tracking-[0.22em] transition-transform group-hover:translate-x-1">→</span>
-            </button>
           </div>
         </motion.div>
       )}
@@ -224,10 +235,12 @@ function trackEvent(type: string, collectionId: string) {
 export function FolderBrowser({
   collectionId,
   pricePerBib,
+  discountTiers = [],
   bibSearchEnabled = true,
 }: {
   collectionId: string;
   pricePerBib: number;
+  discountTiers?: import("~/lib/pricing").DiscountTier[];
   bibSearchEnabled?: boolean;
 }) {
   const { blurred } = usePhotoProtection();
@@ -254,6 +267,25 @@ export function FolderBrowser({
 
   const { items: cartItems, inCart: isInCart, toggle: toggleCart, clear: clearCart } = useCart();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const discountHint = useMemo(() => {
+    if (discountTiers.length === 0) return null;
+    const cartQty = cartItems.length;
+    const sortedTiers = [...discountTiers].sort((a, b) => a.minQty - b.minQty);
+    const activeTier = [...sortedTiers].reverse().find((t) => cartQty >= t.minQty);
+    const nextTier = sortedTiers.find((t) => t.minQty > cartQty);
+    if (cartQty === 0 && nextTier) {
+      return `Llevá ${nextTier.minQty} fotos y ahorrá · ${tierLabel(nextTier)}`;
+    }
+    if (nextTier) {
+      const missing = nextTier.minQty - cartQty;
+      return `Sumá ${missing} foto${missing !== 1 ? "s" : ""} más y ahorrá · ${tierLabel(nextTier)}`;
+    }
+    if (activeTier) {
+      return `¡Descuento aplicado! · ${tierLabel(activeTier)}`;
+    }
+    return null;
+  }, [cartItems.length, discountTiers]);
 
   // Stable ref for cartItems so the checkout listener never needs to re-subscribe
   const cartItemsRef = useRef(cartItems);
@@ -870,10 +902,29 @@ export function FolderBrowser({
         }
       />
 
+      {/* ── Discount hint banner (when cart is empty) ──────── */}
+      <AnimatePresence>
+        {discountHint && cartItems.length === 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[min(560px,calc(100vw-32px))]"
+          >
+            <div className="flex items-center gap-2 px-4 sm:px-5 py-3 bg-[#16a34a] text-[color:var(--color-paper)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-paper)] shrink-0" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em]">{discountHint}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Floating cart bar ──────────────────────────────── */}
       <CartBar
         count={cartItems.length}
         total={cartItems.reduce((sum, i) => sum + i.price, 0)}
+        discountHint={discountHint}
         onCheckout={cartCheckout}
         onClear={clearCart}
       />

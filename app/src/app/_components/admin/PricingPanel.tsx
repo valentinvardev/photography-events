@@ -15,12 +15,15 @@ function TierRow({
   onChange: (t: DiscountTier) => void;
   onRemove: () => void;
 }) {
+  const inputClass =
+    "w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-3 py-1.5 font-mono text-[11px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none";
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] w-5 text-right">
+    <div className="flex items-start gap-3">
+      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] w-5 text-right pt-7">
         {String(index + 1).padStart(2, "0")}
       </span>
-      <div className="flex-1 grid grid-cols-2 gap-2">
+      <div className="flex-1 grid grid-cols-3 gap-2">
         <div>
           <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
             Desde (fotos)
@@ -30,25 +33,45 @@ function TierRow({
             min={1}
             value={tier.minQty}
             onChange={(e) => onChange({ ...tier, minQty: Math.max(1, parseInt(e.target.value) || 1) })}
-            className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-3 py-1.5 font-mono text-[11px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
+            className={inputClass}
           />
         </div>
         <div>
           <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
-            Precio c/u (ARS)
+            Tipo
+          </label>
+          <select
+            value={tier.kind}
+            onChange={(e) => onChange({ ...tier, kind: e.target.value as "fixed" | "percent" })}
+            className={inputClass}
+          >
+            <option value="fixed">Precio fijo</option>
+            <option value="percent">% off</option>
+          </select>
+        </div>
+        <div>
+          <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
+            {tier.kind === "percent" ? "% descuento" : "Precio c/u (ARS)"}
           </label>
           <input
             type="number"
             min={0}
-            value={tier.priceEach}
-            onChange={(e) => onChange({ ...tier, priceEach: Math.max(0, parseFloat(e.target.value) || 0) })}
-            className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-3 py-1.5 font-mono text-[11px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
+            max={tier.kind === "percent" ? 100 : undefined}
+            value={tier.value}
+            onChange={(e) => {
+              const max = tier.kind === "percent" ? 100 : Infinity;
+              onChange({
+                ...tier,
+                value: Math.max(0, Math.min(max, parseFloat(e.target.value) || 0)),
+              });
+            }}
+            className={inputClass}
           />
         </div>
       </div>
       <button
         onClick={onRemove}
-        className="font-mono text-[10px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-safelight)] transition-colors shrink-0"
+        className="font-mono text-[10px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-safelight)] transition-colors shrink-0 pt-7"
       >
         [×]
       </button>
@@ -91,10 +114,22 @@ export function PricingPanel({
 
   const addTier = () => {
     const last = tiers[tiers.length - 1];
-    setTiers((prev) => [
-      ...prev,
-      { minQty: last ? last.minQty + 5 : 5, priceEach: last ? Math.max(0, last.priceEach - 500) : 0 },
-    ]);
+    const nextMinQty = last ? last.minQty + 5 : 5;
+    if (last?.kind === "percent") {
+      setTiers((prev) => [
+        ...prev,
+        { minQty: nextMinQty, kind: "percent", value: Math.min(100, last.value + 5) },
+      ]);
+    } else {
+      setTiers((prev) => [
+        ...prev,
+        {
+          minQty: nextMinQty,
+          kind: "fixed",
+          value: last ? Math.max(0, last.value - 500) : pricePerBib,
+        },
+      ]);
+    }
   };
 
   return (
@@ -149,7 +184,7 @@ export function PricingPanel({
         )}
         {tiers.length > 0 && (
           <p className="mt-3 font-mono text-[8px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)]">
-            El precio por foto aplica cuando el corredor tiene ≥ N fotos en su búsqueda
+            El descuento aplica cuando el cliente lleva ≥ N fotos en el carrito
           </p>
         )}
       </div>
