@@ -282,10 +282,10 @@ export default function NewCollectionPage() {
       const signRes = await fetch("/api/uploads/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
+        body: JSON.stringify({ path, contentType: file.type }),
       });
       if (!signRes.ok) return;
-      const { signedUrl } = await signRes.json() as { signedUrl: string };
+      const { signedUrl, key } = await signRes.json() as { signedUrl: string; key: string };
       const uploadRes = await fetch(signedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
@@ -295,7 +295,7 @@ export default function NewCollectionPage() {
 
       const previewUrl = URL.createObjectURL(file);
       setForm((f) => ({ ...f, [type === "banner" ? "bannerUrl" : "logoUrl"]: previewUrl }));
-      setKeys((k) => ({ ...k, [type === "banner" ? "bannerKey" : "logoKey"]: path }));
+      setKeys((k) => ({ ...k, [type === "banner" ? "bannerKey" : "logoKey"]: key }));
     } finally {
       setter(false);
     }

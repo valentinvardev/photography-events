@@ -35,10 +35,10 @@ export function ImageUpload({
       const signRes = await fetch("/api/uploads/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
+        body: JSON.stringify({ path, contentType: file.type }),
       });
       if (!signRes.ok) throw new Error("No se pudo obtener URL de subida.");
-      const { signedUrl } = await signRes.json() as { signedUrl: string };
+      const { signedUrl, key } = await signRes.json() as { signedUrl: string; key: string };
 
       const upRes = await fetch(signedUrl, {
         method: "PUT",
@@ -47,7 +47,7 @@ export function ImageUpload({
       });
       if (!upRes.ok) throw new Error("Error al subir la imagen.");
 
-      onChange(path);
+      onChange(key);
       setStatus("done");
     } catch (e) {
       setStatus("error");

@@ -87,12 +87,10 @@ export async function deleteS3Objects(keys: string[]): Promise<void> {
   );
 }
 
-/** Determina si una storageKey apunta a S3 (en lugar de Supabase). */
+/** Determina si una storageKey apunta a S3 (en lugar de Supabase).
+ *  Asume que cualquier key que empieza con S3_PREFIX es de S3.
+ *  Conserva fallback para legacy S3 keys subidas antes de configurar el prefijo. */
 export function isS3Key(storageKey: string): boolean {
-  return (
-    storageKey.startsWith(`${S3_PREFIX}uploads/`) ||
-    storageKey.startsWith(`${S3_PREFIX}previews/`) ||
-    storageKey.startsWith("uploads/") ||
-    storageKey.startsWith("previews/")
-  );
+  if (S3_PREFIX && storageKey.startsWith(S3_PREFIX)) return true;
+  return storageKey.startsWith("uploads/") || storageKey.startsWith("previews/");
 }
