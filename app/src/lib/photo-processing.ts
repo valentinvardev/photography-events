@@ -176,8 +176,14 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
 
   const buffer = Buffer.from(bytes);
   const meta = await sharp(buffer).metadata();
-  const w = meta.width ?? 1200;
-  const h = meta.height ?? 800;
+  const origW = meta.width ?? 1200;
+  const origH = meta.height ?? 800;
+
+  // Cap preview size to keep S3 egress low.
+  const MAX_DIM = 1600;
+  const scale = Math.min(1, MAX_DIM / Math.max(origW, origH));
+  const w = Math.round(origW * scale);
+  const h = Math.round(origH * scale);
 
   try {
     // Watermark is always read from Supabase (WATERMARK_KEY) for now
@@ -185,7 +191,11 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
     const composite = supabase
       ? await buildWatermarkComposite(supabase, w, h)
       : await buildFallbackComposite();
-    const watermarked = await sharp(buffer).composite([composite]).jpeg({ quality: 78 }).toBuffer();
+    const watermarked = await sharp(buffer)
+      .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
+      .composite([composite])
+      .jpeg({ quality: 72, mozjpeg: true })
+      .toBuffer();
 
     // Delete previous preview from the correct backend
     if (photo.previewKey) {

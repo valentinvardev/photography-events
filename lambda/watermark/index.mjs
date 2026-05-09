@@ -53,8 +53,14 @@ export async function handler(event) {
 
   const photoBytes = await getS3Bytes(storageKey);
   const meta = await sharp(photoBytes).metadata();
-  const w = meta.width ?? 1200;
-  const h = meta.height ?? 800;
+  const origW = meta.width ?? 1200;
+  const origH = meta.height ?? 800;
+
+  // Cap preview size to keep S3 egress and Lambda memory low.
+  const MAX_DIM = 1600;
+  const scale = Math.min(1, MAX_DIM / Math.max(origW, origH));
+  const w = Math.round(origW * scale);
+  const h = Math.round(origH * scale);
 
   const wmPng = await getWatermarkBytes();
   let composite;
@@ -89,8 +95,9 @@ export async function handler(event) {
   }
 
   const watermarked = await sharp(photoBytes)
+    .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
     .composite([composite])
-    .jpeg({ quality: 78, mozjpeg: true })
+    .jpeg({ quality: 72, mozjpeg: true })
     .toBuffer();
 
   if (existingPreviewKey) {
