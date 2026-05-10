@@ -1,7 +1,11 @@
-// Regenera previews para fotos cuyo previewKey quedó null
-// (típicamente porque la Lambda crasheó en un upload pasado).
+// Regenera previews invocando la Lambda de watermark.
 //
-// Uso: node scripts/regenerate-missing-previews.mjs
+// Uso:
+//   node scripts/regenerate-missing-previews.mjs              → solo las que tienen previewKey null
+//   node scripts/regenerate-missing-previews.mjs --all        → todas las fotos del sistema
+//   node scripts/regenerate-missing-previews.mjs --collection <id>   → todas las de una colección
+//
+// La Lambda procesa en paralelo, así que tirar muchas a la vez es OK.
 
 import { PrismaClient } from "../generated/prisma/index.js";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
@@ -21,44 +25,68 @@ if (!ARN) {
   process.exit(1);
 }
 
+const args = process.argv.slice(2);
+const ALL = args.includes("--all");
+const collIdx = args.indexOf("--collection");
+const COLLECTION = collIdx >= 0 ? args[collIdx + 1] : null;
+
 const lambda = new LambdaClient({ region: process.env.AWS_REGION ?? "us-east-2" });
 const db = new PrismaClient({
   datasourceUrl: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
 });
 
+const where = COLLECTION
+  ? { collectionId: COLLECTION }
+  : ALL
+  ? {}
+  : { previewKey: null };
+
 const photos = await db.photo.findMany({
-  where: { previewKey: null },
-  select: { id: true, storageKey: true, filename: true, mimeType: true },
+  where,
+  select: { id: true, storageKey: true, previewKey: true, filename: true, mimeType: true },
 });
 
-// Skip videos — Lambda solo procesa imágenes
 const targets = photos.filter(
   (p) => !p.mimeType?.startsWith("video/") && !/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename),
 );
 
-console.log(`Encontradas ${targets.length} fotos sin preview. Invocando Lambda…`);
+console.log(`Encontradas ${targets.length} fotos para regenerar (modo: ${ALL ? "todas" : COLLECTION ? "colección" : "solo missing"}).`);
 
+const CHUNK = 50;
+const CHUNK_DELAY_MS = 100;
 let ok = 0;
 let fail = 0;
-for (const p of targets) {
-  try {
-    await lambda.send(
-      new InvokeCommand({
-        FunctionName: ARN,
-        InvocationType: "Event",
-        Payload: Buffer.from(JSON.stringify({ photoId: p.id, storageKey: p.storageKey })),
-      }),
-    );
-    ok++;
-    console.log(`  ✓ ${p.id} (${p.filename})`);
-    await new Promise((r) => setTimeout(r, 50));
-  } catch (err) {
-    fail++;
-    console.error(`  ✗ ${p.id} (${p.filename}):`, err.message);
-  }
+
+for (let i = 0; i < targets.length; i += CHUNK) {
+  const batch = targets.slice(i, i + CHUNK);
+  await Promise.all(
+    batch.map(async (p) => {
+      try {
+        await lambda.send(
+          new InvokeCommand({
+            FunctionName: ARN,
+            InvocationType: "Event",
+            Payload: Buffer.from(
+              JSON.stringify({
+                photoId: p.id,
+                storageKey: p.storageKey,
+                existingPreviewKey: p.previewKey ?? undefined,
+              }),
+            ),
+          }),
+        );
+        ok++;
+      } catch (err) {
+        fail++;
+        console.error(`  ✗ ${p.id}:`, err.message);
+      }
+    }),
+  );
+  process.stdout.write(`\r${Math.min(i + CHUNK, targets.length)} / ${targets.length}`);
+  if (i + CHUNK < targets.length) await new Promise((r) => setTimeout(r, CHUNK_DELAY_MS));
 }
 
 console.log(`\nListo: ${ok} invocadas, ${fail} fallaron.`);
-console.log("Esperá 30-60s y revisá la galería. Si siguen sin preview, mirá los CloudWatch logs.");
+console.log("La Lambda corre async — esperá unos minutos y revisá la galería.");
 
 await db.$disconnect();
