@@ -36,13 +36,14 @@ async function downloadToTempFile(storageKey: string, ext: string): Promise<stri
 }
 
 async function getWatermarkTempPath(): Promise<string | null> {
-  const supabase = getAdminClient();
-  if (!supabase) return null;
-  const { data, error } = await supabase.storage.from("photos").download(WATERMARK_KEY);
-  if (error ?? !data) return null;
-  const tmpPath = path.join(os.tmpdir(), `ms-wm-${Date.now()}.png`);
-  fs.writeFileSync(tmpPath, Buffer.from(await data.arrayBuffer()));
-  return tmpPath;
+  try {
+    const bytes = await getS3ObjectBytes(WATERMARK_KEY);
+    const tmpPath = path.join(os.tmpdir(), `ms-wm-${Date.now()}.png`);
+    fs.writeFileSync(tmpPath, Buffer.from(bytes));
+    return tmpPath;
+  } catch {
+    return null;
+  }
 }
 
 function runFfmpeg(cmd: ffmpeg.FfmpegCommand): Promise<void> {

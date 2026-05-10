@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import { createClient } from "@supabase/supabase-js";
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import pg from "pg";
 
@@ -10,16 +9,13 @@ const BUCKET = process.env.BUCKET_NAME;
 const S3_PREFIX = process.env.BUCKET_PREFIX
   ? process.env.BUCKET_PREFIX.replace(/\/?$/, "/")
   : "";
-const WATERMARK_KEY = "watermarks/active.png";
+const WATERMARK_KEY = `${S3_PREFIX}watermarks/active.png`;
 
 // Reused across warm invocations
 let wmCache = null;
 let wmCacheExpiry = 0;
 
 // Module-level pg pool — reused across warm invocations.
-// max=1 because each Lambda container handles one request at a time.
-// Short idleTimeoutMillis so we don't exhaust Supabase's connection pool
-// when hundreds of warm Lambda containers are running concurrently.
 const pgPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 1,
@@ -28,17 +24,16 @@ const pgPool = new Pool({
 });
 pgPool.on("error", (err) => console.error("[pg pool error]", err));
 
-// Module-level Supabase client for watermark download
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
 async function getWatermarkBytes() {
   const now = Date.now();
   if (wmCache && now < wmCacheExpiry) return wmCache;
-  const { data, error } = await supabase.storage.from("photos").download(WATERMARK_KEY);
-  if (error || !data) return null;
-  wmCache = Buffer.from(await data.arrayBuffer());
-  wmCacheExpiry = now + 10 * 60 * 1000;
-  return wmCache;
+  try {
+    wmCache = await getS3Bytes(WATERMARK_KEY);
+    wmCacheExpiry = now + 10 * 60 * 1000;
+    return wmCache;
+  } catch {
+    return null;
+  }
 }
 
 async function getS3Bytes(key) {

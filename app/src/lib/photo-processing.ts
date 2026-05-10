@@ -115,27 +115,27 @@ export async function runOcr(photoId: string): Promise<{ bib: string | null }> {
 // ── Watermark ─────────────────────────────────────────────────────────────────
 
 // Cache the raw watermark PNG in memory for 10 minutes to avoid re-downloading
-// from Supabase on every photo processed.
+// from S3 on every photo processed.
 let wmCache: { buf: Buffer; expiresAt: number } | null = null;
 
-async function getWatermarkBytes(
-  client: NonNullable<ReturnType<typeof getAdminClient>>,
-): Promise<Buffer | null> {
+async function getWatermarkBytes(): Promise<Buffer | null> {
   const now = Date.now();
   if (wmCache && now < wmCache.expiresAt) return wmCache.buf;
-  const { data, error } = await client.storage.from("photos").download(WATERMARK_KEY);
-  if (error ?? !data) return null;
-  const buf = Buffer.from(await data.arrayBuffer());
-  wmCache = { buf, expiresAt: now + 10 * 60 * 1000 };
-  return buf;
+  try {
+    const bytes = await getS3ObjectBytes(WATERMARK_KEY);
+    const buf = Buffer.from(bytes);
+    wmCache = { buf, expiresAt: now + 10 * 60 * 1000 };
+    return buf;
+  } catch {
+    return null;
+  }
 }
 
 async function buildWatermarkComposite(
-  client: NonNullable<ReturnType<typeof getAdminClient>>,
   imageWidth: number,
   imageHeight: number,
 ): Promise<{ input: Buffer; tile: boolean; blend: "over" }> {
-  const wmPng = await getWatermarkBytes(client);
+  const wmPng = await getWatermarkBytes();
 
   if (wmPng) {
     const meta = await sharp(wmPng).metadata();
@@ -170,7 +170,6 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
   const photo = await db.photo.findUnique({ where: { id: photoId } });
   if (!photo) return { previewKey: null };
 
-  const useS3 = isS3Key(photo.storageKey);
   const bytes = await downloadBytes(photo.storageKey);
   if (!bytes) { console.error("[Watermark] Download failed:", photo.storageKey); return { previewKey: null }; }
 
@@ -186,11 +185,7 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
   const h = Math.round(origH * scale);
 
   try {
-    // Watermark is always read from Supabase (WATERMARK_KEY) for now
-    const supabase = getAdminClient();
-    const composite = supabase
-      ? await buildWatermarkComposite(supabase, w, h)
-      : await buildFallbackComposite();
+    const composite = await buildWatermarkComposite(w, h);
     const watermarked = await sharp(buffer)
       .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
       .composite([composite])
@@ -200,45 +195,25 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
     // Delete previous preview from the correct backend
     if (photo.previewKey) {
       if (isS3Key(photo.previewKey)) {
-        await deleteS3Objects([photo.previewKey]);
-      } else if (supabase) {
-        await supabase.storage.from("photos").remove([photo.previewKey]);
+        await deleteS3Objects([photo.previewKey]).catch(() => null);
+      } else {
+        const supabase = getAdminClient();
+        if (supabase) {
+          await supabase.storage.from("photos").remove([photo.previewKey]).catch(() => null);
+        }
       }
     }
 
     const previewKey = s3Key(`previews/${photo.id}.jpg`);
-
-    if (useS3) {
-      await putS3Object(previewKey, watermarked, "image/jpeg");
-    } else {
-      if (!supabase) { console.error("[Watermark] Supabase not available for preview upload"); return { previewKey: null }; }
-      const { error: upError } = await supabase.storage
-        .from("photos")
-        .upload(previewKey, watermarked, { contentType: "image/jpeg", upsert: true });
-      if (upError) { console.error("[Watermark] Upload failed:", upError); return { previewKey: null }; }
-    }
+    await putS3Object(previewKey, watermarked, "image/jpeg");
 
     await db.photo.update({ where: { id: photoId }, data: { previewKey } });
-    console.log(`[Watermark] photoId=${photoId} done (${useS3 ? "s3" : "supabase"})`);
+    console.log(`[Watermark] photoId=${photoId} done`);
     return { previewKey };
   } catch (err) {
     console.error(`[Watermark] Error for photoId=${photoId}:`, err);
     return { previewKey: null };
   }
-}
-
-function buildFallbackComposite(): { input: Buffer; tile: boolean; blend: "over" } {
-  const tileSize = 220;
-  const half = tileSize / 2;
-  const fallback = Buffer.from(
-    `<svg width="${tileSize}" height="${tileSize}" xmlns="http://www.w3.org/2000/svg">
-      <text x="${half}" y="${half}" text-anchor="middle" dominant-baseline="middle"
-        font-family="Arial, sans-serif" font-size="22" font-weight="bold" letter-spacing="3"
-        fill="rgba(255,255,255,0.38)"
-        transform="rotate(-35, ${half}, ${half})">PREVIEW</text>
-    </svg>`,
-  );
-  return { input: fallback, tile: true, blend: "over" };
 }
 
 // ── Face index ────────────────────────────────────────────────────────────────
