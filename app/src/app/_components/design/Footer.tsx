@@ -33,7 +33,7 @@ export function Footer() {
           </p>
           <div className="flex flex-col gap-3">
             <a
-              href="https://wa.me/5493515551234"
+              href="https://wa.me/5493518000368"
               target="_blank"
               rel="noopener"
                            className="link-draw font-display italic text-[20px] flex items-center gap-2"

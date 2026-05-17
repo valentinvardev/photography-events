@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Sheet } from "~/app/_components/design/Sheet";
 
-const WA_NUMBER = "5493543513123";
-const WA_DISPLAY = "+54 9 3543 51-3123";
+const WA_NUMBER = "5493518000368";
+const WA_DISPLAY = "+54 9 3518 00-0368";
 const WA_URL = `https://wa.me/${WA_NUMBER}`;
 
 function WhatsAppGlyph({ className }: { className?: string }) {

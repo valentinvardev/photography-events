@@ -369,7 +369,7 @@ export function BibCheckoutModal({
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+54 9 351 555 5555"
+                    placeholder="+54 9 3518 00-0368"
                   />
                   <Field
                     label="Email *"
