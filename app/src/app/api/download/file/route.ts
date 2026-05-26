@@ -9,6 +9,13 @@ function parsePhotoIds(raw: string | null): string[] {
   catch { return []; }
 }
 
+function safeAsciiFilename(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\x00-\x7F]/g, "_");
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token = searchParams.get("token");
@@ -69,12 +76,13 @@ export async function GET(request: NextRequest) {
   }
 
   const contentType = photo.mimeType ?? storageRes.headers.get("content-type") ?? "image/jpeg";
-  const filename = encodeURIComponent(photo.filename);
+  const encodedFilename = encodeURIComponent(photo.filename);
+  const asciiFilename = safeAsciiFilename(photo.filename);
 
   return new NextResponse(storageRes.body, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${photo.filename}"; filename*=UTF-8''${filename}`,
+      "Content-Disposition": `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
       "Cache-Control": "private, no-store",
     },
   });
