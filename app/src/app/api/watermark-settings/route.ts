@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "~/server/auth";
 import {
-  createS3DownloadUrl,
   deleteS3Objects,
   putS3Object,
+  createCFInvalidation,
 } from "~/lib/s3";
+import { resolveMediaUrl } from "~/lib/media";
 import { WATERMARK_KEY } from "~/lib/watermark";
 
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const url = await createS3DownloadUrl(WATERMARK_KEY, 3600);
+    const url = await resolveMediaUrl(WATERMARK_KEY);
     return NextResponse.json({ url });
   } catch {
     return NextResponse.json({ url: null });
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await putS3Object(WATERMARK_KEY, bytes, file.type || "image/png");
+    void createCFInvalidation([`/${WATERMARK_KEY}`]);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[WatermarkSettings] upload error:", err);

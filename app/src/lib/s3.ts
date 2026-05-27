@@ -5,6 +5,10 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  CloudFrontClient,
+  CreateInvalidationCommand,
+} from "@aws-sdk/client-cloudfront";
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION ?? "us-east-2",
@@ -13,6 +17,19 @@ const s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
+
+const cfClient = process.env.CLOUDFRONT_DISTRIBUTION_ID
+  ? new CloudFrontClient({
+      region: "us-east-1",
+      credentials:
+        process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+          ? {
+              accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            }
+          : undefined,
+    })
+  : null;
 
 export const S3_BUCKET = process.env.AWS_S3_BUCKET ?? "mediaseller-photos";
 
@@ -85,6 +102,34 @@ export async function deleteS3Objects(keys: string[]): Promise<void> {
   await Promise.all(
     keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }))),
   );
+}
+
+/** Returns a CloudFront URL for a given S3 key, or null if CF is not configured. */
+export function getCFUrl(key: string): string | null {
+  return process.env.CLOUDFRONT_DOMAIN
+    ? `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`
+    : null;
+}
+
+/**
+ * Invalidates CloudFront cache for the given paths (must start with "/").
+ * No-op if CF is not configured. Use wildcards for bulk: ["/prefix/*"].
+ */
+export async function createCFInvalidation(paths: string[]): Promise<void> {
+  if (!cfClient || !process.env.CLOUDFRONT_DISTRIBUTION_ID || paths.length === 0) return;
+  try {
+    await cfClient.send(
+      new CreateInvalidationCommand({
+        DistributionId: process.env.CLOUDFRONT_DISTRIBUTION_ID,
+        InvalidationBatch: {
+          CallerReference: Date.now().toString(),
+          Paths: { Quantity: paths.length, Items: paths },
+        },
+      }),
+    );
+  } catch (err) {
+    console.error("[cloudfront] invalidation failed:", err);
+  }
 }
 
 /** Determina si una storageKey apunta a S3 (en lugar de Supabase).

@@ -8,6 +8,7 @@ import {
   isS3Key,
   s3Key,
 } from "~/lib/s3";
+import { resolveMediaUrl } from "~/lib/media";
 import { isVideoMimeType } from "~/lib/video-utils";
 import {
   createTRPCRouter,
@@ -130,7 +131,7 @@ export const photoRouter = createTRPCRouter({
           const key = p.previewKey ?? p.storageKey;
           const ct = p.mimeType ?? (/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) ? "video/mp4" : undefined);
           const url = isS3Key(key)
-            ? await createS3DownloadUrl(key, 3600, ct ?? undefined)
+            ? await resolveMediaUrl(key, { contentType: ct ?? undefined })
             : await createSignedUrl(key, 3600);
           return { id: p.id, url, mimeType: ct ?? p.mimeType, filename: p.filename };
         }),

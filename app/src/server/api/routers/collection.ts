@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { Prisma } from "../../../../generated/prisma";
 import { createSignedUrl } from "~/lib/supabase/admin";
-import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
+import { isS3Key } from "~/lib/s3";
+import { resolveMediaUrl } from "~/lib/media";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -11,7 +12,7 @@ import {
 async function resolveUrl(url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
   if (url.startsWith("http")) return url;
-  if (isS3Key(url)) return createS3DownloadUrl(url, 7200);
+  if (isS3Key(url)) return resolveMediaUrl(url);
   return createSignedUrl(url, 7200);
 }
 

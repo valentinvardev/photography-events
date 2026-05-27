@@ -13,7 +13,8 @@ import { BannerEditor } from "~/app/_components/admin/BannerEditor";
 import { SearchSettings } from "~/app/_components/admin/SearchSettings";
 import { parseTiers } from "~/lib/pricing";
 import { createSignedUrl } from "~/lib/supabase/admin";
-import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
+import { isS3Key } from "~/lib/s3";
+import { resolveMediaUrl } from "~/lib/media";
 
 const PAGE_SIZE = 48;
 
@@ -65,7 +66,7 @@ export default async function EditCollectionPage({
       const url = key.startsWith("http")
         ? key
         : isS3Key(key)
-        ? await createS3DownloadUrl(key, 3600, ct)
+        ? await resolveMediaUrl(key, { contentType: ct })
         : await createSignedUrl(key, 3600);
       return { ...p, price: p.price !== null ? Number(p.price) : null, url };
     }),
