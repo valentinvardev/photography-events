@@ -194,7 +194,7 @@ export default async function EditCollectionPage({
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
             Subir fotos
           </p>
-          <PhotoUploader collectionId={id} />
+          <PhotoUploader collectionId={id} bibSearchEnabled={collection.bibSearchEnabled} />
         </div>
         <div className="bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">

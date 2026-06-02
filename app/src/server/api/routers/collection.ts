@@ -165,9 +165,9 @@ export const collectionRouter = createTRPCRouter({
         categoryId: z.string().optional().nullable(),
       }),
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, eventDate, discountTiers, ...rest } = input;
-      return ctx.db.collection.update({
+      const updated = await ctx.db.collection.update({
         where: { id },
         data: {
           ...rest,
@@ -179,6 +179,14 @@ export const collectionRouter = createTRPCRouter({
             : {}),
         },
       });
+      // When switching to face-only mode, clear any existing bib numbers
+      if (input.bibSearchEnabled === false) {
+        await ctx.db.photo.updateMany({
+          where: { collectionId: id, bibNumber: { not: null } },
+          data: { bibNumber: null },
+        });
+      }
+      return updated;
     }),
 
   delete: protectedProcedure

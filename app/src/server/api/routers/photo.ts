@@ -199,6 +199,11 @@ export const photoRouter = createTRPCRouter({
           message: `Límite de ${PHOTO_LIMIT.toLocaleString()} fotos alcanzado. Solo quedan ${available} lugares disponibles.`,
         });
       }
+      const collection = await ctx.db.collection.findUnique({
+        where: { id: input.collectionId },
+        select: { bibSearchEnabled: true },
+      });
+      const bibsEnabled = collection?.bibSearchEnabled ?? true;
       const count = await ctx.db.photo.count({ where: { collectionId: input.collectionId } });
       const created = await Promise.all(
         input.photos.map((p, i) =>
@@ -208,7 +213,7 @@ export const photoRouter = createTRPCRouter({
               storageKey: p.storageKey,
               filename: p.filename,
               mimeType: p.mimeType ?? null,
-              bibNumber: p.bibNumber ?? null,
+              bibNumber: bibsEnabled ? (p.bibNumber ?? null) : null,
               fileSize: p.fileSize,
               width: p.width,
               height: p.height,
@@ -233,8 +238,8 @@ export const photoRouter = createTRPCRouter({
           if (isVideo) {
             void runVideoWatermark(photoId);
           } else {
-            // OCR and face indexing always run locally
-            void runOcr(photoId);
+            // Skip OCR for collections configured as face-only
+            if (bibsEnabled) void runOcr(photoId);
             void runFaceIndex(photoId, input.collectionId);
 
             if (lambdaArn) {

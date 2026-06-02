@@ -80,7 +80,7 @@ function OcrBadge({ status, bib, ocrSource }: { status: OcrStatus; bib?: string;
   return null;
 }
 
-function FileRow({ entry }: { entry: FileEntry }) {
+function FileRow({ entry, showOcr }: { entry: FileEntry; showOcr: boolean }) {
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 border border-[color:var(--color-grey-200)]"
@@ -125,7 +125,7 @@ function FileRow({ entry }: { entry: FileEntry }) {
               : entry.status === "error" ? (entry.errorMsg ?? "Error")
               : "En cola"}
           </p>
-          {entry.status === "done" && (
+          {entry.status === "done" && showOcr && (
             <OcrBadge status={entry.ocrStatus} bib={entry.bib} ocrSource={entry.ocrSource} />
           )}
         </div>
@@ -137,7 +137,13 @@ function FileRow({ entry }: { entry: FileEntry }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function PhotoUploader({ collectionId }: { collectionId: string }) {
+export function PhotoUploader({
+  collectionId,
+  bibSearchEnabled = true,
+}: {
+  collectionId: string;
+  bibSearchEnabled?: boolean;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<FileEntry[]>([]);
@@ -283,6 +289,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
       });
     }
 
+    if (!bibSearchEnabled) return;
     await new Promise((r) => setTimeout(r, 2_000));
     for (let i = 0; i < pendingPolls.length; i++) {
       const { entryId, photoId } = pendingPolls[i]!;
@@ -361,7 +368,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
                 ✓ {doneCount} subida{doneCount !== 1 ? "s" : ""}
               </span>
             )}
-            {ocrDone > 0 && (
+            {bibSearchEnabled && ocrDone > 0 && (
               <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-ink)] font-bold">
                 #{ocrDone} dorsal{ocrDone !== 1 ? "es" : ""} detectado{ocrDone !== 1 ? "s" : ""}
               </span>
@@ -413,7 +420,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
             className="flex flex-col gap-1.5 overflow-hidden"
             style={{ maxHeight: showCap ? `${capHeight}px` : "none" }}
           >
-            {sorted.map((entry) => <FileRow key={entry.id} entry={entry} />)}
+            {sorted.map((entry) => <FileRow key={entry.id} entry={entry} showOcr={bibSearchEnabled} />)}
           </div>
           {showCap && (
             <div
@@ -458,7 +465,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
                   Progreso de subida
                 </p>
                 <p className="font-mono text-[10px] text-[color:var(--color-ink)] mt-0.5">
-                  {doneCount} subidas · {ocrDone} dorsales · {errorCount} errores
+                  {doneCount} subidas{bibSearchEnabled ? ` · ${ocrDone} dorsales` : ""} · {errorCount} errores
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -479,7 +486,7 @@ export function PhotoUploader({ collectionId }: { collectionId: string }) {
               </div>
             </div>
             <div className="overflow-y-auto flex-1 px-4 py-3 flex flex-col gap-1.5">
-              {sorted.map((entry) => <FileRow key={entry.id} entry={entry} />)}
+              {sorted.map((entry) => <FileRow key={entry.id} entry={entry} showOcr={bibSearchEnabled} />)}
             </div>
           </div>
         </div>
