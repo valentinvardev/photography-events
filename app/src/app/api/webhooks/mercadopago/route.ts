@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "~/server/db";
 import { sendPurchaseApprovedEmail } from "~/lib/email";
+import { PurchaseStatus } from "../../../../../generated/prisma";
 
 function verifyWebhookSignature(request: NextRequest, rawBody: string): boolean {
   const { env } = require("~/env") as { env: { MERCADOPAGO_WEBHOOK_SECRET?: string } };
@@ -67,26 +68,26 @@ export async function POST(request: NextRequest) {
     const purchaseId = payment.external_reference;
     if (!purchaseId) return NextResponse.json({ received: true });
 
-    const statusMap: Record<string, string> = {
-      approved: "APPROVED",
-      rejected: "REJECTED",
-      refunded: "REFUNDED",
+    const statusMap: Record<string, PurchaseStatus> = {
+      approved: PurchaseStatus.APPROVED,
+      rejected: PurchaseStatus.REJECTED,
+      refunded: PurchaseStatus.REFUNDED,
     };
 
-    const newStatus = statusMap[payment.status] ?? "PENDING";
+    const newStatus: PurchaseStatus = statusMap[payment.status] ?? PurchaseStatus.PENDING;
 
     // Idempotency: only rotate the token + send the email on the actual
     // transition into APPROVED. MP webhooks are at-least-once, so a duplicate
     // delivery for the same payment would otherwise invalidate the link we
     // already sent and spam the buyer with a second email.
-    if (newStatus === "APPROVED") {
+    if (newStatus === PurchaseStatus.APPROVED) {
       const newToken = crypto.randomUUID();
       const claim = await db.purchase.updateMany({
-        where: { id: purchaseId, status: { not: "APPROVED" } },
+        where: { id: purchaseId, status: { not: PurchaseStatus.APPROVED } },
         data: {
           mercadopagoPaymentId: String(payment.id),
           mercadopagoOrderId: payment.order?.id ? String(payment.order.id) : undefined,
-          status: "APPROVED",
+          status: PurchaseStatus.APPROVED,
           downloadToken: newToken,
           downloadTokenExpires: null,
         },
