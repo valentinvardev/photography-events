@@ -75,46 +75,68 @@ export async function POST(request: NextRequest) {
 
     const newStatus = statusMap[payment.status] ?? "PENDING";
 
-    const updateData: Record<string, unknown> = {
-      mercadopagoPaymentId: String(payment.id),
-      mercadopagoOrderId: payment.order?.id ? String(payment.order.id) : undefined,
-      status: newStatus,
-    };
-
+    // Idempotency: only rotate the token + send the email on the actual
+    // transition into APPROVED. MP webhooks are at-least-once, so a duplicate
+    // delivery for the same payment would otherwise invalidate the link we
+    // already sent and spam the buyer with a second email.
     if (newStatus === "APPROVED") {
-      updateData.downloadToken = crypto.randomUUID();
-      updateData.downloadTokenExpires = null;
-    }
+      const newToken = crypto.randomUUID();
+      const claim = await db.purchase.updateMany({
+        where: { id: purchaseId, status: { not: "APPROVED" } },
+        data: {
+          mercadopagoPaymentId: String(payment.id),
+          mercadopagoOrderId: payment.order?.id ? String(payment.order.id) : undefined,
+          status: "APPROVED",
+          downloadToken: newToken,
+          downloadTokenExpires: null,
+        },
+      });
 
-    const updated = await db.purchase.update({
-      where: { id: purchaseId },
-      data: updateData,
-      include: { collection: { select: { title: true } } },
-    });
+      if (claim.count === 0) {
+        // Another webhook delivery already approved this purchase — ack and bail.
+        return NextResponse.json({ received: true });
+      }
 
-    if (newStatus === "APPROVED" && updated.downloadToken) {
+      const purchase = await db.purchase.findUnique({
+        where: { id: purchaseId },
+        include: { collection: { select: { title: true } } },
+      });
+      if (!purchase) return NextResponse.json({ received: true });
+
       let photoCount = 0;
-      if (updated.photoIds) {
+      if (purchase.photoIds) {
         try {
-          const parsed = JSON.parse(updated.photoIds) as unknown;
+          const parsed = JSON.parse(purchase.photoIds) as unknown;
           if (Array.isArray(parsed)) photoCount = parsed.length;
         } catch { /* fall through */ }
       }
       if (photoCount === 0) {
         // Legacy fallback for purchases without photoIds
         photoCount = await db.photo.count({
-          where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
+          where: { collectionId: purchase.collectionId, bibNumber: purchase.bibNumber ?? undefined },
         });
       }
       void sendPurchaseApprovedEmail({
-        to: updated.buyerEmail,
-        buyerName: updated.buyerName,
-        bibNumber: updated.bibNumber,
-        collectionTitle: updated.collection.title,
-        downloadToken: updated.downloadToken,
+        to: purchase.buyerEmail,
+        buyerName: purchase.buyerName,
+        bibNumber: purchase.bibNumber,
+        collectionTitle: purchase.collection.title,
+        downloadToken: newToken,
         photoCount,
       });
+
+      return NextResponse.json({ received: true });
     }
+
+    // Non-approved updates: just sync the status + MP ids, no side-effects.
+    await db.purchase.update({
+      where: { id: purchaseId },
+      data: {
+        mercadopagoPaymentId: String(payment.id),
+        mercadopagoOrderId: payment.order?.id ? String(payment.order.id) : undefined,
+        status: newStatus,
+      },
+    });
 
     return NextResponse.json({ received: true });
   } catch {
