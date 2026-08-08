@@ -4,7 +4,8 @@ import { env } from "~/env";
 import { sendPurchaseApprovedEmail } from "~/lib/email";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
-import { parseTiers, calcEffectivePricePerPhoto } from "~/lib/pricing";
+import { parseTiers, calcCartTotal } from "~/lib/pricing";
+import { verifyPackToken } from "~/lib/pack-token";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -20,6 +21,41 @@ function parsePhotoIds(raw: string | null | undefined): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * The pack price is flat ("todas las fotos de tu búsqueda"), so the requested set
+ * has to be a real search result — otherwise anyone could pass every photo ID in
+ * the collection (they're public via `photo.listAll`) and buy the whole event for
+ * one pack price.
+ *
+ * Bib searches are re-run here with the same query `searchByBib` uses. Face
+ * searches can't be reproduced, so `/api/face-search` signs its result set.
+ */
+async function isLegitimatePackSet(
+  db: typeof dbInstance,
+  opts: { collectionId: string; packBib?: string; packToken?: string },
+  photoIds: string[],
+): Promise<boolean> {
+  if (photoIds.length === 0) return false;
+
+  if (opts.packBib) {
+    const legit = await db.photo.findMany({
+      where: {
+        collectionId: opts.collectionId,
+        bibNumber: { contains: opts.packBib.trim(), mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    const allowed = new Set(legit.map((p) => p.id));
+    return photoIds.every((id) => allowed.has(id));
+  }
+
+  if (opts.packToken) {
+    return verifyPackToken(opts.packToken, opts.collectionId, photoIds);
+  }
+
+  return false;
 }
 
 const getMp = async (db: typeof dbInstance) => {
@@ -42,7 +78,9 @@ export const purchaseRouter = createTRPCRouter({
         buyerLastName: z.string().optional(),
         buyerPhone: z.string().optional(),
         packMode: z.boolean().optional(),
-        totalPhotosInSearch: z.number().int().min(1).optional(),
+        // Search context that justifies the flat pack price — one of the two.
+        packBib: z.string().optional(),
+        packToken: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -57,19 +95,34 @@ export const purchaseRouter = createTRPCRouter({
       });
       if (photos.length === 0) throw new Error("No se encontraron fotos válidas para comprar.");
 
-      let totalAmount: number;
+      // Tier qualification: cart quantity (photos being purchased), not search total.
+      const individualTotal = calcCartTotal(
+        photos.map((p) => (p.price !== null ? Number(p.price) : null)),
+        Number(collection.pricePerBib),
+        parseTiers(collection.discountTiers),
+      );
 
-      if (input.packMode && collection.packPrice !== null && collection.packPrice !== undefined) {
-        totalAmount = Number(collection.packPrice);
-      } else {
-        const tiers = parseTiers(collection.discountTiers);
-        const basePrice = Number(collection.pricePerBib);
-        // Tier qualification: cart quantity (photos being purchased), not search total.
-        const effectiveBase = calcEffectivePricePerPhoto(photos.length, basePrice, tiers);
-        totalAmount = photos.reduce((sum, p) => {
-          const custom = p.price !== null ? Number(p.price) : null;
-          return sum + (custom !== null && custom !== basePrice ? custom : effectiveBase);
-        }, 0);
+      let totalAmount = individualTotal;
+
+      if (input.packMode) {
+        const packPrice = collection.packPrice !== null && collection.packPrice !== undefined
+          ? Number(collection.packPrice)
+          : 0;
+        if (packPrice <= 0) {
+          throw new Error("Esta colección no tiene un precio de pack configurado.");
+        }
+        const legit = await isLegitimatePackSet(
+          ctx.db,
+          { collectionId: input.collectionId, packBib: input.packBib, packToken: input.packToken },
+          photos.map((p) => p.id),
+        );
+        if (!legit) {
+          throw new Error(
+            "El pack ya no es válido. Volvé a buscar tus fotos e intentá de nuevo.",
+          );
+        }
+        // Never charge more for the pack than buying the same photos one by one.
+        totalAmount = Math.min(packPrice, individualTotal);
       }
 
       const purchase = await ctx.db.purchase.create({

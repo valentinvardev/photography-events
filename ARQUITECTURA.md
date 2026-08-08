@@ -194,7 +194,7 @@ Consumo dual: los Server Components llaman al router directamente vía `createCa
 | Ruta | Auth | Por qué no es tRPC |
 |---|---|---|
 | `POST /api/webhooks/mercadopago` | firma HMAC | lo llama MercadoPago |
-| `POST /api/face-search` | pública | payload base64 grande + errores de Rekognition mapeados a respuestas |
+| `POST /api/face-search` | pública | payload base64 grande + errores de Rekognition mapeados a respuestas; devuelve el `packToken` firmado |
 | `GET /api/download/file` | `downloadToken` | streamea bytes con `Content-Disposition` |
 | `POST /api/watermark` | sesión | reprocesa una foto/video puntual |
 | `POST /api/watermark/batch` | sesión | dispara Lambda masivo con throttle |
@@ -389,17 +389,42 @@ sequenceDiagram
 
 ### Cálculo de precio
 
-En [purchase.ts:60-73](app/src/server/api/routers/purchase.ts#L60-L73), y **siempre en el
-servidor** — el cliente nunca manda un monto:
+Toda la aritmética vive en [pricing.ts](app/src/lib/pricing.ts) y es **la misma función en cliente y
+servidor** (`calcCartTotal`), para que lo que el comprador ve sea exactamente lo que se le cobra. El
+cliente nunca manda un monto.
 
-1. **Modo pack**: si `packMode` y la colección tiene `packPrice`, ese es el total, punto.
-2. **Modo unitario**: `calcEffectivePricePerPhoto(cantidad_en_carrito, pricePerBib, tiers)` busca el
-   tramo de mayor `minQty` que califique. Los tramos son `fixed` (precio por foto en ARS) o
-   `percent` (descuento). `parseTiers` normaliza también el formato viejo `{minQty, priceEach}`.
-3. Un `Photo.price` distinto del base **gana sobre el tramo**; si es igual al base, se aplica el tramo.
+1. **Tramo activo**: `calcEffectivePricePerPhoto(cantidad, pricePerBib, tiers)` busca el tramo de
+   mayor `minQty` que califique. Los tramos son `fixed` (precio por foto en ARS) o `percent`
+   (descuento). `parseTiers` normaliza también el formato viejo `{minQty, priceEach}`. Lo que
+   califica es la **cantidad en el carrito**, no el total de resultados de la búsqueda.
+2. **Precio por foto**: `resolvePhotoPrice` aplica el tramo, salvo que la foto tenga un
+   `Photo.price` **más barato**. Un override más caro nunca supera al tramo — si no, el cartel
+   "Descuento activo · $X c/u" estaría mintiendo.
+3. **Redondeo**: los tramos `percent` redondean el precio unitario, y el total se redondea otra vez.
+   Sin eso, `3000 × (1 − 0.33)` produce `2009.9999999999998` y esa basura decimal termina en el
+   `unit_price` de MercadoPago mientras `amountPaid` (`Decimal(10,2)`) guarda otro número.
+4. **Modo pack**: se cobra `min(packPrice, total_individual)` — el pack nunca puede salir más caro
+   que comprar esas mismas fotos sueltas.
 
-Lo que califica para el tramo es la **cantidad en el carrito**, no el total de resultados de la
-búsqueda.
+### Validación del pack
+
+El pack es un precio plano por "todas las fotos de tu búsqueda", así que el servidor tiene que saber
+que el conjunto pedido **es realmente un resultado de búsqueda**. Si no, cualquiera podría mandar
+todos los IDs de la colección (son públicos vía `photo.listAll`) y comprar el evento entero por un
+precio de pack. `isLegitimatePackSet` exige una de dos pruebas:
+
+| Contexto | Prueba | Cómo se valida |
+|---|---|---|
+| Búsqueda por dorsal | `packBib` | el servidor **re-ejecuta** la query de dorsal y exige que lo pedido sea un subconjunto |
+| Búsqueda por cara | `packToken` | HMAC-SHA256 sobre `collectionId + ids ordenados + expiración`, firmado por `/api/face-search` ([pack-token.ts](app/src/lib/pack-token.ts)), TTL 1h |
+
+Sin ninguna de las dos, el pack se rechaza. Navegar la galería sin buscar **no** es un contexto de
+pack, y la UI no lo ofrece ahí.
+
+En el cliente, el conjunto del pack (`PackOffer` en [FolderModal.tsx](app/src/app/_components/FolderModal.tsx))
+es siempre el **resultado completo**, nunca una página de él, y excluye las coincidencias `fuzzy`
+—que son dorsales de otros corredores—. El pack solo se muestra si `packPrice < total_individual`,
+y solo se rotula "Mejor oferta" si además le gana a la selección actual.
 
 ### Webhook — idempotencia
 

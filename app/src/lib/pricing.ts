@@ -42,12 +42,48 @@ export function calcEffectivePricePerPhoto(
     if (qty >= tier.minQty) {
       if (tier.kind === "percent") {
         const pct = Math.max(0, Math.min(100, tier.value));
-        return Math.max(0, basePrice * (1 - pct / 100));
+        // Rounded: the per-photo price is shown as "$X c/u" and multiplied by qty,
+        // so an unrounded float would leak cents into the MercadoPago amount.
+        return Math.max(0, Math.round(basePrice * (1 - pct / 100)));
       }
-      return Math.max(0, tier.value);
+      return Math.max(0, Math.round(tier.value));
     }
   }
   return basePrice;
+}
+
+/**
+ * Final price of a single photo.
+ * A per-photo override never makes the buyer pay more than the active tier —
+ * otherwise the "Descuento activo · $X c/u" badge would be a lie.
+ */
+export function resolvePhotoPrice(
+  customPrice: number | null | undefined,
+  basePrice: number,
+  effectiveBase: number,
+): number {
+  if (customPrice === null || customPrice === undefined) return effectiveBase;
+  if (customPrice === basePrice) return effectiveBase;
+  return Math.min(customPrice, effectiveBase);
+}
+
+/**
+ * Total for a set of photos, given their per-photo overrides (null = no override).
+ * Single source of truth: the checkout UI and `purchase.createPreference` both
+ * call this, so what the buyer sees is what MercadoPago charges.
+ */
+export function calcCartTotal(
+  customPrices: (number | null)[],
+  basePrice: number,
+  tiers: DiscountTier[],
+): number {
+  const effectiveBase = calcEffectivePricePerPhoto(customPrices.length, basePrice, tiers);
+  return Math.round(
+    customPrices.reduce<number>(
+      (sum, custom) => sum + resolvePhotoPrice(custom, basePrice, effectiveBase),
+      0,
+    ),
+  );
 }
 
 /** Returns a short human label for a tier (e.g. "$1500 c/u" or "20% off"). */

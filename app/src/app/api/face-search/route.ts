@@ -4,6 +4,7 @@ import {
   SearchFacesByImageCommand,
 } from "@aws-sdk/client-rekognition";
 import { db } from "~/server/db";
+import { signPackToken } from "~/lib/pack-token";
 
 const rekognition = new RekognitionClient({
   region: process.env.AWS_REGION ?? "us-east-1",
@@ -89,8 +90,11 @@ export async function POST(req: NextRequest) {
       photoIds,
     }));
 
+    // Signed proof of this result set, so checkout can charge the pack price for it.
+    const packToken = signPackToken(collectionId, photos.map((p) => p.id));
+
     console.log(`[face-search] collectionId=${collectionId} found ${matchedPhotoIds.length} photos in ${groups.length} groups`);
-    return NextResponse.json({ groups });
+    return NextResponse.json({ groups, packToken });
   } catch (err) {
     console.error("[face-search] error:", err);
     return NextResponse.json({ error: "Face search failed" }, { status: 500 });

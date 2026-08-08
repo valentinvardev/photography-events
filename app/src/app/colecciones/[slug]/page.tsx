@@ -57,7 +57,7 @@ export default async function CollectionPage({
               · {collection.title}
             </span>
             <div className="ml-auto flex items-center gap-3">
-              <NavCartButton price={price} />
+              <NavCartButton price={price} discountTiers={tiers} />
             </div>
           </div>
         </nav>

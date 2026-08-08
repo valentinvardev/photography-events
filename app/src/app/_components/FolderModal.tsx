@@ -8,9 +8,30 @@ import { useCart } from "~/app/_components/CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
 import { Field } from "~/app/_components/design/Field";
 import { Lightbox } from "~/app/_components/design/Lightbox";
-import { parseTiers, calcEffectivePricePerPhoto, tierLabel } from "~/lib/pricing";
+import {
+  parseTiers,
+  calcEffectivePricePerPhoto,
+  calcCartTotal,
+  resolvePhotoPrice,
+  tierLabel,
+} from "~/lib/pricing";
 
 type Step = "cart" | "buy" | "email";
+
+/**
+ * The "todas tus fotos por $X" offer.
+ *
+ * `ids` is the complete result set it covers — never a page of it. `bib` or
+ * `token` is what the server re-checks before honouring the flat price, so an
+ * offer without either can't be built. `individualTotal` is what those same
+ * photos would cost one by one, which is how we know it's actually a deal.
+ */
+export type PackOffer = {
+  ids: string[];
+  bib: string | null;
+  token: string | null;
+  individualTotal: number;
+};
 
 function PhotoRow({
   photoId,
@@ -79,15 +100,13 @@ function PhotoRow({
 export function BibCheckoutModal({
   bib,
   photoIds: initialPhotoIds,
-  allPhotoIds,
-  totalPhotosInSearch,
+  pack,
   collectionId,
   onClose,
 }: {
   bib: string;
   photoIds: string[];
-  allPhotoIds: string[];
-  totalPhotosInSearch: number;
+  pack: PackOffer | null;
   collectionId: string;
   onClose: () => void;
 }) {
@@ -114,28 +133,49 @@ export function BibCheckoutModal({
   const basePrice = collectionInfo?.price ?? 0;
   const tiers = parseTiers(collectionInfo?.discountTiers);
   const packPrice = collectionInfo?.packPrice ?? null;
+  const packIds = pack?.ids ?? [];
+  const packPhotoCount = packIds.length;
+
   // Tier qualification is based on the cart quantity (photos being purchased),
   // not the total found in the search context.
-  const cartQty = packMode ? allPhotoIds.length : photoIds.length;
+  const cartQty = packMode ? packPhotoCount : photoIds.length;
   const effectiveBase = calcEffectivePricePerPhoto(cartQty, basePrice, tiers);
   const activeTier = tiers.slice().reverse().find((t) => cartQty >= t.minQty);
   // First tier the cart hasn't yet reached (tiers are sorted by minQty asc).
   const nextTier = tiers.find((t) => t.minQty > cartQty);
 
-  // Per-photo prices: use custom price if different from base, else effective tier price
   const priceById = new Map(cartItems.map((i) => [i.photoId, i.price]));
-  const getPhotoPrice = (id: string) => {
+  const customPriceOf = (id: string): number | null => {
     const custom = priceById.get(id);
-    if (custom !== undefined && custom !== basePrice) return custom;
-    return effectiveBase;
+    return custom === undefined || custom === basePrice ? null : custom;
   };
+  const getPhotoPrice = (id: string) =>
+    resolvePhotoPrice(customPriceOf(id), basePrice, effectiveBase);
 
-  const selectedTotal = packMode
-    ? (packPrice ?? 0)
-    : photoIds.reduce((sum, id) => sum + getPhotoPrice(id), 0);
+  const individualTotal = calcCartTotal(
+    photoIds.map((id) => customPriceOf(id)),
+    basePrice,
+    tiers,
+  );
 
-  const packAvailable = packPrice !== null && allPhotoIds.length > 0;
-  const packPhotoCount = allPhotoIds.length;
+  // Only a real deal counts as a pack: it has to beat buying the same photos
+  // one by one, otherwise "Mejor oferta" would be selling the buyer a worse price.
+  const packAvailable =
+    pack !== null &&
+    packPrice !== null &&
+    packPrice > 0 &&
+    packPhotoCount > 0 &&
+    packPrice < pack.individualTotal;
+
+  const selectedTotal = packMode ? (packPrice ?? 0) : individualTotal;
+  // Strictly better than the current selection: more photos for less money.
+  const packBeatsSelection = packAvailable && (packPrice ?? 0) <= individualTotal;
+
+  // The pack can stop being a deal while the sheet is open (prices load in, the
+  // cart grows). Never leave the buyer stuck in a mode that no longer exists.
+  useEffect(() => {
+    if (packMode && !packAvailable) setPackMode(false);
+  }, [packMode, packAvailable]);
 
   const createPreference = api.purchase.createPreference.useMutation({
     onSuccess: (data) => {
@@ -163,13 +203,15 @@ export function BibCheckoutModal({
     if (!email || !name) return;
     createPreference.mutate({
       collectionId,
-      photoIds: packMode ? allPhotoIds : photoIds,
+      photoIds: packMode ? packIds : photoIds,
       buyerEmail: email,
       buyerName: name,
       buyerLastName: lastName || undefined,
       buyerPhone: phone || undefined,
       packMode: packMode || undefined,
-      totalPhotosInSearch,
+      // Proof the pack set is a real search result — the server re-checks it.
+      packBib: packMode ? (pack?.bib ?? undefined) : undefined,
+      packToken: packMode ? (pack?.token ?? undefined) : undefined,
     });
   };
 
@@ -287,7 +329,11 @@ export function BibCheckoutModal({
                   {packAvailable && (
                     <div className="mt-6 border border-[color:var(--color-grey-300)] px-5 py-4">
                       <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-3">
-                        {packMode ? "O comprá fotos sueltas" : "Mejor oferta"}
+                        {packMode
+                          ? "O comprá fotos sueltas"
+                          : packBeatsSelection
+                          ? "Mejor oferta"
+                          : "Llevá todas tus fotos"}
                       </p>
                       {!packMode ? (
                         <>
@@ -300,7 +346,10 @@ export function BibCheckoutModal({
                             </p>
                           </div>
                           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-500)] mb-4">
-                            Todas tus fotos · sin marca de agua
+                            Todas tus fotos · sin marca de agua ·{" "}
+                            <span className="text-[#16a34a]">
+                              ahorrás ${(pack!.individualTotal - packPrice!).toLocaleString("es-AR")}
+                            </span>
                           </p>
                           <button
                             onClick={() => setPackMode(true)}

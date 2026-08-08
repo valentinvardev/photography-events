@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
-import { BibCheckoutModal } from "~/app/_components/FolderModal";
+import { BibCheckoutModal, type PackOffer } from "~/app/_components/FolderModal";
 import { useCart } from "~/app/_components/CartContext";
 import { Lightbox } from "~/app/_components/design/Lightbox";
 import { usePhotoProtection } from "~/app/_components/usePhotoProtection";
-import { tierLabel } from "~/lib/pricing";
+import { calcCartTotal, tierLabel } from "~/lib/pricing";
 
 // ─── Photo tile ───────────────────────────────────────────────────────────────
 // URL is passed from parent batch query — no per-tile API call.
@@ -254,7 +254,8 @@ export function FolderBrowser({
     "idle" | "uploading" | "done" | "no-face" | "error"
   >("idle");
   const [faceBibs, setFaceBibs] = useState<{ bib: string; photoIds: string[] }[] | null>(null);
-  const [modal, setModal] = useState<{ bib: string; photoIds: string[]; allPhotoIds: string[]; totalPhotosInSearch: number } | null>(null);
+  const [faceToken, setFaceToken] = useState<string | null>(null);
+  const [modal, setModal] = useState<{ bib: string; photoIds: string[]; pack: PackOffer | null } | null>(null);
   const [lightbox, setLightbox] = useState<{
     url: string;
     mimeType: string | null;
@@ -267,6 +268,18 @@ export function FolderBrowser({
 
   const { items: cartItems, inCart: isInCart, toggle: toggleCart, clear: clearCart } = useCart();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Discounted total — must match what the checkout modal and the server compute,
+  // otherwise the cart looks like the discount never applied.
+  const cartTotal = useMemo(
+    () =>
+      calcCartTotal(
+        cartItems.map((i) => (i.price === pricePerBib ? null : i.price)),
+        pricePerBib,
+        discountTiers,
+      ),
+    [cartItems, pricePerBib, discountTiers],
+  );
 
   const discountHint = useMemo(() => {
     if (discountTiers.length === 0) return null;
@@ -377,6 +390,42 @@ export function FolderBrowser({
     }));
   }, [hasSearch, allSearchPhotos, showingFace, faceBibs, allPhotos, priceMap, pricePerBib, galleryPage, PAGE_SIZE, galleryFilter]);
 
+  /**
+   * Builds the pack offer for a set of photos: "todas tus fotos por $X".
+   * `bib` or `token` is the proof the server re-checks before charging the flat
+   * price — without one of them the pack can't be offered at all.
+   */
+  const buildPack = useCallback(
+    (ids: string[], bib: string | null, token: string | null): PackOffer | null => {
+      if (ids.length === 0 || (!bib && !token)) return null;
+      const individualTotal = calcCartTotal(
+        ids.map((id) => {
+          const p = priceMap.get(id);
+          return p === undefined || p === pricePerBib ? null : p;
+        }),
+        pricePerBib,
+        discountTiers,
+      );
+      return { ids, bib, token, individualTotal };
+    },
+    [priceMap, pricePerBib, discountTiers],
+  );
+
+  /**
+   * The pack always covers the *whole* current result set — never a page of it,
+   * and never the fuzzy "SIMILAR" matches, which belong to other runners.
+   * Browsing the gallery is not a search, so there is no pack there.
+   */
+  const packContext = useMemo(() => {
+    if (hasSearch) {
+      return buildPack(exactPhotos.map((p) => p.id), debouncedSearch, null);
+    }
+    if (showingFace) {
+      return buildPack((faceBibs ?? []).flatMap((g) => g.photoIds), null, faceToken);
+    }
+    return null;
+  }, [hasSearch, exactPhotos, showingFace, faceBibs, faceToken, debouncedSearch, buildPack]);
+
   // Single batch URL query — converts N per-tile queries into 1 request
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
   const { data: urlData } = api.photo.getPreviewUrls.useQuery(
@@ -397,6 +446,10 @@ export function FolderBrowser({
   useEffect(() => { allPhotosRef.current = allPhotos; }, [allPhotos]);
   const visiblePhotosRef = useRef(visiblePhotos);
   useEffect(() => { visiblePhotosRef.current = visiblePhotos; }, [visiblePhotos]);
+  const packContextRef = useRef(packContext);
+  useEffect(() => { packContextRef.current = packContext; }, [packContext]);
+  const buildPackRef = useRef(buildPack);
+  useEffect(() => { buildPackRef.current = buildPack; }, [buildPack]);
   const mimeTypeMapRef = useRef(mimeTypeMap);
   useEffect(() => { mimeTypeMapRef.current = mimeTypeMap; }, [mimeTypeMap]);
   const urlMapRef = useRef(urlMap);
@@ -467,8 +520,11 @@ export function FolderBrowser({
     if (items.length === 0) return;
     const allBibs = [...new Set(items.map((i) => i.bibNumber).filter(Boolean))];
     const bib = allBibs.length === 1 ? (allBibs[0] ?? "") : "";
-    const allVisible = visiblePhotosRef.current.map((p) => p.id);
-    setModal({ bib, photoIds: items.map((i) => i.photoId), allPhotoIds: allVisible, totalPhotosInSearch: allVisible.length });
+    setModal({
+      bib,
+      photoIds: items.map((i) => i.photoId),
+      pack: packContextRef.current,
+    });
   }, []);
 
   // Checkout event listener — stable, never re-subscribes on cart changes
@@ -525,12 +581,14 @@ export function FolderBrowser({
       if (!resp.ok) throw new Error(`status ${resp.status}`);
       const json = (await resp.json()) as {
         groups: { bib: string; photoIds: string[] }[];
+        packToken?: string | null;
         noFaceDetected?: boolean;
       };
       if (json.noFaceDetected) {
         setFaceStatus("no-face");
         return;
       }
+      setFaceToken(json.packToken ?? null);
       setFaceBibs(json.groups);
       setFaceStatus("done");
       setFaceActive(true);
@@ -887,8 +945,13 @@ export function FolderBrowser({
                   setModal({
                     bib: lightbox.bibNumber ?? "",
                     photoIds: lightbox.photoIds,
-                    allPhotoIds: lightbox.photoIds,
-                    totalPhotosInSearch: lightbox.photoIds.length,
+                    // In a search/face context the pack is the whole result set;
+                    // while browsing, it's every photo of this runner's bib.
+                    pack:
+                      packContextRef.current ??
+                      (lightbox.bibNumber
+                        ? buildPackRef.current(lightbox.photoIds, lightbox.bibNumber, null)
+                        : null),
                   });
                   setLightbox(null);
                 }}
@@ -923,7 +986,7 @@ export function FolderBrowser({
       {/* ── Floating cart bar ──────────────────────────────── */}
       <CartBar
         count={cartItems.length}
-        total={cartItems.reduce((sum, i) => sum + i.price, 0)}
+        total={cartTotal}
         discountHint={discountHint}
         onCheckout={cartCheckout}
         onClear={clearCart}
@@ -934,8 +997,7 @@ export function FolderBrowser({
         <BibCheckoutModal
           bib={modal.bib}
           photoIds={modal.photoIds}
-          allPhotoIds={modal.allPhotoIds}
-          totalPhotosInSearch={modal.totalPhotosInSearch}
+          pack={modal.pack}
           collectionId={collectionId}
           onClose={() => setModal(null)}
         />

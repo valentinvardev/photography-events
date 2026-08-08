@@ -3,13 +3,30 @@
 import { useState } from "react";
 import { useCart } from "./CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
+import {
+  calcCartTotal,
+  calcEffectivePricePerPhoto,
+  resolvePhotoPrice,
+  type DiscountTier,
+} from "~/lib/pricing";
 
-export function NavCartButton({ price }: { price: number }) {
+export function NavCartButton({
+  price,
+  discountTiers = [],
+}: {
+  price: number;
+  discountTiers?: DiscountTier[];
+}) {
   const { items, clear, toggle } = useCart();
   const [open, setOpen] = useState(false);
 
   const count = items.length;
-  const total = items.reduce((sum, i) => sum + i.price, 0);
+  const customPrices = items.map((i) => (i.price === price ? null : i.price));
+  // Discounted total — the checkout and the server compute the same number, so
+  // the cart must not show the undiscounted one.
+  const total = calcCartTotal(customPrices, price, discountTiers);
+  const listTotal = items.reduce((sum, i) => sum + i.price, 0);
+  const effectiveBase = calcEffectivePricePerPhoto(count, price, discountTiers);
   const hasItems = count > 0;
 
   const triggerCheckout = () => {
@@ -52,6 +69,7 @@ export function NavCartButton({ price }: { price: number }) {
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                 {String(count).padStart(2, "0")} {count === 1 ? "foto" : "fotos"} ·{" "}
                 {total > 0 ? `$${total.toLocaleString("es-AR")}` : "Sin precio"}
+                {listTotal > total && " · descuento aplicado"}
               </p>
             </div>
             <button
@@ -98,7 +116,12 @@ export function NavCartButton({ price }: { price: number }) {
                     </div>
                     {item.price > 0 && (
                       <span className="font-mono text-[11px] tracking-[0.06em] text-[color:var(--color-ink)] shrink-0">
-                        ${item.price.toLocaleString("es-AR")}
+                        $
+                        {resolvePhotoPrice(
+                          item.price === price ? null : item.price,
+                          price,
+                          effectiveBase,
+                        ).toLocaleString("es-AR")}
                       </span>
                     )}
                     <button
@@ -122,8 +145,15 @@ export function NavCartButton({ price }: { price: number }) {
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                     Total
                   </span>
-                  <span className="font-display italic text-[28px] leading-none text-[color:var(--color-ink)]">
-                    ${total.toLocaleString("es-AR")}
+                  <span className="flex items-baseline gap-3">
+                    {listTotal > total && (
+                      <span className="font-mono text-[12px] text-[color:var(--color-grey-500)] line-through">
+                        ${listTotal.toLocaleString("es-AR")}
+                      </span>
+                    )}
+                    <span className="font-display italic text-[28px] leading-none text-[color:var(--color-ink)]">
+                      ${total.toLocaleString("es-AR")}
+                    </span>
                   </span>
                 </div>
               )}
