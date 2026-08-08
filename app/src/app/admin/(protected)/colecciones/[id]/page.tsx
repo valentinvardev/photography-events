@@ -188,26 +188,17 @@ export default async function EditCollectionPage({
         />
       </div>
 
-      {/* Three-column layout: upload / pricing / category */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
-        <div className="bg-[color:var(--color-paper)] p-6">
+      {/* Upload takes half; the two one-control settings share the rest.
+          Pricing gets its own full-width row below — four equal columns left it
+          squeezing three inputs per tier into ~250px. */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-px border border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-px">
+        <div className="lg:col-span-6 bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
             Subir fotos
           </p>
           <PhotoUploader collectionId={id} bibSearchEnabled={collection.bibSearchEnabled} />
         </div>
-        <div className="bg-[color:var(--color-paper)] p-6">
-          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
-            Precios
-          </p>
-          <PricingPanel
-            collectionId={id}
-            initialPricePerBib={Number(collection.pricePerBib ?? 0)}
-            initialPackPrice={collection.packPrice !== null && collection.packPrice !== undefined ? Number(collection.packPrice) : null}
-            initialTiers={parseTiers(collection.discountTiers)}
-          />
-        </div>
-        <div className="bg-[color:var(--color-paper)] p-6">
+        <div className="lg:col-span-3 bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
             Categoría
           </p>
@@ -217,7 +208,7 @@ export default async function EditCollectionPage({
             categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
           />
         </div>
-        <div className="bg-[color:var(--color-paper)] p-6">
+        <div className="lg:col-span-3 bg-[color:var(--color-paper)] p-6">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
             Búsqueda
           </p>
@@ -226,6 +217,19 @@ export default async function EditCollectionPage({
             initialBibSearchEnabled={collection.bibSearchEnabled ?? true}
           />
         </div>
+      </div>
+
+      {/* Pricing — full width: base, pack and the discount tiers side by side */}
+      <div className="border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] p-6 mb-px">
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-5">
+          Precios
+        </p>
+        <PricingPanel
+          collectionId={id}
+          initialPricePerBib={Number(collection.pricePerBib ?? 0)}
+          initialPackPrice={collection.packPrice !== null && collection.packPrice !== undefined ? Number(collection.packPrice) : null}
+          initialTiers={parseTiers(collection.discountTiers)}
+        />
       </div>
 
       {/* Apariencia — banner / logo */}

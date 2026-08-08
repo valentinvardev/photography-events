@@ -2,76 +2,81 @@
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import type { DiscountTier } from "~/lib/pricing";
+import { calcEffectivePricePerPhoto, type DiscountTier } from "~/lib/pricing";
 
 function TierRow({
   tier,
   index,
+  basePrice,
   onChange,
   onRemove,
 }: {
   tier: DiscountTier;
   index: number;
+  basePrice: number;
   onChange: (t: DiscountTier) => void;
   onRemove: () => void;
 }) {
   const inputClass =
     "w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-3 py-1.5 font-mono text-[11px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none";
+  const labelClass =
+    "block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1";
+
+  // What this tier actually does, in the admin's own numbers.
+  const perPhoto = calcEffectivePricePerPhoto(tier.minQty, basePrice, [tier]);
 
   return (
-    <div className="flex items-start gap-3">
-      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] w-5 text-right pt-7">
+    <div className="flex flex-wrap items-end gap-3">
+      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] w-5 text-right pb-2">
         {String(index + 1).padStart(2, "0")}
       </span>
-      <div className="flex-1 grid grid-cols-3 gap-2">
-        <div>
-          <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
-            Desde (fotos)
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={tier.minQty}
-            onChange={(e) => onChange({ ...tier, minQty: Math.max(1, parseInt(e.target.value) || 1) })}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
-            Tipo
-          </label>
-          <select
-            value={tier.kind}
-            onChange={(e) => onChange({ ...tier, kind: e.target.value as "fixed" | "percent" })}
-            className={inputClass}
-          >
-            <option value="fixed">Precio fijo</option>
-            <option value="percent">% off</option>
-          </select>
-        </div>
-        <div>
-          <label className="block font-mono text-[8px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] mb-1">
-            {tier.kind === "percent" ? "% descuento" : "Precio c/u (ARS)"}
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={tier.kind === "percent" ? 100 : undefined}
-            value={tier.value}
-            onChange={(e) => {
-              const max = tier.kind === "percent" ? 100 : Infinity;
-              onChange({
-                ...tier,
-                value: Math.max(0, Math.min(max, parseFloat(e.target.value) || 0)),
-              });
-            }}
-            className={inputClass}
-          />
-        </div>
+      <div className="w-[120px]">
+        <label className={labelClass}>Desde (fotos)</label>
+        <input
+          type="number"
+          min={1}
+          value={tier.minQty}
+          onChange={(e) => onChange({ ...tier, minQty: Math.max(1, parseInt(e.target.value) || 1) })}
+          className={inputClass}
+        />
       </div>
+      <div className="w-[150px]">
+        <label className={labelClass}>Tipo</label>
+        <select
+          value={tier.kind}
+          onChange={(e) => onChange({ ...tier, kind: e.target.value as "fixed" | "percent" })}
+          className={inputClass}
+        >
+          <option value="fixed">Precio fijo</option>
+          <option value="percent">% off</option>
+        </select>
+      </div>
+      <div className="w-[160px]">
+        <label className={labelClass}>
+          {tier.kind === "percent" ? "% descuento" : "Precio c/u (ARS)"}
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={tier.kind === "percent" ? 100 : undefined}
+          value={tier.value}
+          onChange={(e) => {
+            const max = tier.kind === "percent" ? 100 : Infinity;
+            onChange({
+              ...tier,
+              value: Math.max(0, Math.min(max, parseFloat(e.target.value) || 0)),
+            });
+          }}
+          className={inputClass}
+        />
+      </div>
+      <p className="flex-1 min-w-[180px] font-mono text-[9px] uppercase tracking-[0.14em] text-[color:var(--color-grey-500)] pb-2">
+        {tier.minQty}+ fotos → ${perPhoto.toLocaleString("es-AR")} c/u ·{" "}
+        {tier.minQty} salen ${(perPhoto * tier.minQty).toLocaleString("es-AR")}
+      </p>
       <button
         onClick={onRemove}
-        className="font-mono text-[10px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-safelight)] transition-colors shrink-0 pt-7"
+        className="font-mono text-[10px] text-[color:var(--color-grey-400)] hover:text-[color:var(--color-safelight)] transition-colors shrink-0 pb-2"
       >
         [×]
       </button>
@@ -134,18 +139,68 @@ export function PricingPanel({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Base price */}
-      <div>
-        <label className="block font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
-          Precio base por foto (ARS)
-        </label>
-        <input
-          type="number"
-          min={0}
-          value={pricePerBib}
-          onChange={(e) => setPricePerBib(Math.max(0, parseFloat(e.target.value) || 0))}
-          className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-4 py-2.5 font-display italic text-[22px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
-        />
+      {/* The two headline prices side by side — they're read together */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+        <div>
+          <label className="block font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-2">
+            Precio base por foto (ARS)
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={pricePerBib}
+            onChange={(e) => setPricePerBib(Math.max(0, parseFloat(e.target.value) || 0))}
+            className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-4 py-2.5 font-display italic text-[22px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
+          />
+          <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-400)]">
+            Lo que sale una foto suelta, sin descuentos
+          </p>
+        </div>
+
+        {/* Pack price */}
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+              Precio pack (todas las reconocidas)
+            </p>
+            <button
+              onClick={() => setPackEnabled((v) => !v)}
+              className={`shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] px-3 py-1 border transition-colors ${
+                packEnabled
+                  ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)]"
+                  : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-500)] hover:border-[color:var(--color-ink)]"
+              }`}
+            >
+              {packEnabled ? "Activado" : "Desactivado"}
+            </button>
+          </div>
+          {packEnabled ? (
+            <>
+              <input
+                type="number"
+                min={0}
+                value={packPrice}
+                onChange={(e) => setPackPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-4 py-2.5 font-display italic text-[22px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
+              />
+              <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-400)]">
+                Techo del total. Si las fotos que encontró el corredor suman más que
+                esto, se le cobra este precio y se lleva todas. Si suman menos, el pack
+                no se ofrece.
+              </p>
+              {packPrice > 0 && pricePerBib > 0 && (
+                <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[#16a34a]">
+                  Empieza a convenir a partir de{" "}
+                  {Math.floor(packPrice / pricePerBib) + 1} fotos
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-400)]">
+              Sin pack, el corredor paga foto por foto sin importar cuántas encuentre
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="h-px bg-[color:var(--color-grey-300)]" />
@@ -174,6 +229,7 @@ export function PricingPanel({
                 key={i}
                 tier={t}
                 index={i}
+                basePrice={pricePerBib}
                 onChange={(updated) =>
                   setTiers((prev) => prev.map((x, xi) => (xi === i ? updated : x)))
                 }
@@ -189,54 +245,11 @@ export function PricingPanel({
         )}
       </div>
 
-      <div className="h-px bg-[color:var(--color-grey-300)]" />
-
-      {/* Pack price */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-            Precio pack (todas las fotos reconocidas)
-          </p>
-          <button
-            onClick={() => setPackEnabled((v) => !v)}
-            className={`font-mono text-[9px] uppercase tracking-[0.14em] px-3 py-1.5 border transition-colors ${
-              packEnabled
-                ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)]"
-                : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-500)] hover:border-[color:var(--color-ink)]"
-            }`}
-          >
-            {packEnabled ? "Activado" : "Desactivado"}
-          </button>
-        </div>
-        {packEnabled && (
-          <>
-            <input
-              type="number"
-              min={0}
-              value={packPrice}
-              onChange={(e) => setPackPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-4 py-2.5 font-display italic text-[22px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
-            />
-            <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-400)]">
-              Techo del total. Si las fotos que encontró el corredor suman más que esto,
-              se le cobra este precio y se lleva todas. Si suman menos, el pack no se
-              ofrece.
-            </p>
-            {packPrice > 0 && pricePerBib > 0 && (
-              <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-500)]">
-                Con el precio base actual, el pack empieza a convenir a partir de{" "}
-                {Math.floor(packPrice / pricePerBib) + 1} fotos
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Save */}
+      {/* Save — self-start so it doesn't stretch across the full-width panel */}
       <button
         onClick={handleSave}
         disabled={update.isPending}
-        className={`inline-flex items-center justify-center gap-2 px-5 py-3 border font-mono text-[10px] uppercase tracking-[0.18em] transition-colors disabled:opacity-40 ${
+        className={`self-start inline-flex items-center justify-center gap-2 px-8 py-3 border font-mono text-[10px] uppercase tracking-[0.18em] transition-colors disabled:opacity-40 ${
           saved
             ? "border-[#16a34a] text-[#16a34a]"
             : "border-[color:var(--color-ink)] hover:bg-[color:var(--color-ink)] hover:text-[color:var(--color-paper)]"
