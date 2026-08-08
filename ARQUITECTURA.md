@@ -424,6 +424,15 @@ Ejemplo con base $5.000 y pack $50.000, sobre un corredor con 15 fotos:
 
 El pack no se ofrece cuando no le gana al total individual (con 5 fotos, $25.000 < $50.000).
 
+`applyPackCeiling` en [pricing.ts](app/src/lib/pricing.ts) es el **único** lugar que decide esto, y
+lo llaman las tres superficies que muestran un total: la barra flotante, el cajón de la nav y el
+checkout. Si no, agregar las 15 fotos a mano mostraba $75.000 mientras el botón "Comprar todas"
+decía $50.000. Por eso `PackOffer` vive en [CartContext](app/src/app/_components/CartContext.tsx):
+el carrito de la nav se renderiza fuera de la vista de resultados y necesita el mismo dato.
+
+La función exige que el carrito sea **subconjunto del set del pack**, para que un carrito que quedó
+de otra búsqueda no se lleve prestado este precio.
+
 ### Botón "llevar todas"
 
 Sobre cada grilla de resultados —dorsal y cara— hay una `ResultsActions` con el conteo, "Agregar

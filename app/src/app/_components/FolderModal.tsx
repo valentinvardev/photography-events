@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
-import { useCart } from "~/app/_components/CartContext";
+import { useCart, type PackOffer } from "~/app/_components/CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
 import { Field } from "~/app/_components/design/Field";
 import { Lightbox } from "~/app/_components/design/Lightbox";
@@ -12,26 +12,12 @@ import {
   parseTiers,
   calcEffectivePricePerPhoto,
   calcCartTotal,
+  applyPackCeiling,
   resolvePhotoPrice,
   tierLabel,
 } from "~/lib/pricing";
 
 type Step = "cart" | "buy" | "email";
-
-/**
- * The "todas tus fotos por $X" offer.
- *
- * `ids` is the complete result set it covers — never a page of it. `bib` or
- * `token` is what the server re-checks before honouring the flat price, so an
- * offer without either can't be built. `individualTotal` is what those same
- * photos would cost one by one, which is how we know it's actually a deal.
- */
-export type PackOffer = {
-  ids: string[];
-  bib: string | null;
-  token: string | null;
-  individualTotal: number;
-};
 
 function PhotoRow({
   photoId,
@@ -185,15 +171,16 @@ export function BibCheckoutModal({
   /**
    * The pack is a ceiling, not just an upsell: once the selection costs as much
    * as the pack, charging more than the pack while handing over fewer photos
-   * would be indefensible. Apply it automatically — the buyer can still opt out.
+   * would be indefensible. Same call the cart surfaces make, so the number the
+   * buyer saw in the cart is the number here. They can still opt out.
    */
+  const ceiling = applyPackCeiling(individualTotal, photoIds, pack, packPrice);
+
   useEffect(() => {
-    if (packMode || packOptOut || !packAvailable || packPrice === null) return;
-    if (individualTotal >= packPrice) {
-      setPackMode(true);
-      setPackAutoApplied(true);
-    }
-  }, [packMode, packOptOut, packAvailable, packPrice, individualTotal]);
+    if (packMode || packOptOut || !ceiling.packApplied) return;
+    setPackMode(true);
+    setPackAutoApplied(true);
+  }, [packMode, packOptOut, ceiling.packApplied]);
 
   const leavePack = () => {
     setPackMode(false);

@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
-import { BibCheckoutModal, type PackOffer } from "~/app/_components/FolderModal";
-import { useCart } from "~/app/_components/CartContext";
+import { BibCheckoutModal } from "~/app/_components/FolderModal";
+import { useCart, type PackOffer } from "~/app/_components/CartContext";
 import { Lightbox } from "~/app/_components/design/Lightbox";
 import { usePhotoProtection } from "~/app/_components/usePhotoProtection";
-import { calcCartTotal, tierLabel } from "~/lib/pricing";
+import { applyPackCeiling, calcCartTotal, tierLabel } from "~/lib/pricing";
 
 // ─── Photo tile ───────────────────────────────────────────────────────────────
 // URL is passed from parent batch query — no per-tile API call.
@@ -341,7 +341,13 @@ export function FolderBrowser({
     currentIndex: number;
   } | null>(null);
 
-  const { items: cartItems, inCart: isInCart, toggle: toggleCart, clear: clearCart } = useCart();
+  const {
+    items: cartItems,
+    inCart: isInCart,
+    toggle: toggleCart,
+    clear: clearCart,
+    setPack,
+  } = useCart();
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Discounted total — must match what the checkout modal and the server compute,
@@ -513,6 +519,21 @@ export function FolderBrowser({
     () => resultIds.filter((id) => cartIdSet.has(id)).length,
     [resultIds, cartIdSet],
   );
+
+  // Adding every photo by hand must cost the same as pressing "Comprar todas".
+  const cartCeiling = useMemo(
+    () =>
+      applyPackCeiling(
+        cartTotal,
+        cartItems.map((i) => i.photoId),
+        packContext,
+        packPrice,
+      ),
+    [cartTotal, cartItems, packContext, packPrice],
+  );
+
+  // The nav cart lives outside this component but shows the same total.
+  useEffect(() => { setPack(packContext); }, [packContext, setPack]);
 
   // Single batch URL query — converts N per-tile queries into 1 request
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
@@ -1131,9 +1152,13 @@ export function FolderBrowser({
 
       {/* ── Floating cart bar ──────────────────────────────── */}
       <CartBar
-        count={cartItems.length}
-        total={cartTotal}
-        discountHint={discountHint}
+        count={cartCeiling.packApplied ? cartCeiling.packPhotoCount : cartItems.length}
+        total={cartCeiling.total}
+        discountHint={
+          cartCeiling.packApplied
+            ? `Pack aplicado · llevás las ${cartCeiling.packPhotoCount} fotos`
+            : discountHint
+        }
         onCheckout={cartCheckout}
         onClear={clearCart}
       />

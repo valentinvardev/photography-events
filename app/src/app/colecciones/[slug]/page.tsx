@@ -29,6 +29,10 @@ export default async function CollectionPage({
     : null;
 
   const price = Number(collection.pricePerBib);
+  const packPrice =
+    collection.packPrice !== null && collection.packPrice !== undefined
+      ? Number(collection.packPrice)
+      : null;
   const tiers = parseTiers(collection.discountTiers);
 
   return (
@@ -57,7 +61,7 @@ export default async function CollectionPage({
               · {collection.title}
             </span>
             <div className="ml-auto flex items-center gap-3">
-              <NavCartButton price={price} discountTiers={tiers} />
+              <NavCartButton price={price} packPrice={packPrice} discountTiers={tiers} />
             </div>
           </div>
         </nav>
@@ -78,11 +82,7 @@ export default async function CollectionPage({
         <FolderBrowser
           collectionId={collection.id}
           pricePerBib={price}
-          packPrice={
-            collection.packPrice !== null && collection.packPrice !== undefined
-              ? Number(collection.packPrice)
-              : null
-          }
+          packPrice={packPrice}
           discountTiers={tiers}
           bibSearchEnabled={collection.bibSearchEnabled ?? true}
         />

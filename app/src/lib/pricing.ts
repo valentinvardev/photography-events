@@ -86,6 +86,35 @@ export function calcCartTotal(
   );
 }
 
+/**
+ * Applies the pack price as a ceiling on a selection.
+ *
+ * Every surface that shows a cart total goes through this — the floating bar,
+ * the nav drawer and the checkout sheet — so they can't disagree about what the
+ * buyer is about to pay. When it applies, the buyer gets the whole pack set,
+ * not just what they picked.
+ */
+export function applyPackCeiling(
+  cartTotal: number,
+  cartPhotoIds: string[],
+  pack: { ids: string[]; individualTotal: number } | null,
+  packPrice: number | null,
+): { total: number; packApplied: boolean; packPhotoCount: number } {
+  const packPhotoCount = pack?.ids.length ?? 0;
+  const asIs = { total: cartTotal, packApplied: false, packPhotoCount };
+
+  if (!pack || packPrice === null || packPrice <= 0) return asIs;
+  // Not an offer at all unless it beats buying the whole set one by one.
+  if (packPrice >= pack.individualTotal) return asIs;
+  // A ceiling only makes sense if the selection belongs to that set — a cart
+  // left over from a previous search must not borrow this pack's price.
+  const inPack = new Set(pack.ids);
+  if (cartPhotoIds.length === 0 || !cartPhotoIds.every((id) => inPack.has(id))) return asIs;
+  if (cartTotal < packPrice) return asIs;
+
+  return { total: packPrice, packApplied: true, packPhotoCount };
+}
+
 /** Returns a short human label for a tier (e.g. "$1500 c/u" or "20% off"). */
 export function tierLabel(tier: DiscountTier): string {
   if (tier.kind === "percent") return `${Math.round(tier.value)}% off`;

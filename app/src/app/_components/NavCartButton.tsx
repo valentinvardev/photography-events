@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCart } from "./CartContext";
 import { Sheet } from "~/app/_components/design/Sheet";
 import {
+  applyPackCeiling,
   calcCartTotal,
   calcEffectivePricePerPhoto,
   resolvePhotoPrice,
@@ -12,22 +13,33 @@ import {
 
 export function NavCartButton({
   price,
+  packPrice = null,
   discountTiers = [],
 }: {
   price: number;
+  packPrice?: number | null;
   discountTiers?: DiscountTier[];
 }) {
-  const { items, clear, toggle } = useCart();
+  const { items, clear, toggle, pack } = useCart();
   const [open, setOpen] = useState(false);
 
-  const count = items.length;
   const customPrices = items.map((i) => (i.price === price ? null : i.price));
   // Discounted total — the checkout and the server compute the same number, so
   // the cart must not show the undiscounted one.
-  const total = calcCartTotal(customPrices, price, discountTiers);
+  const itemsTotal = calcCartTotal(customPrices, price, discountTiers);
+  // …and once the pack ceiling kicks in, this must read the same as the
+  // "Comprar todas" button, otherwise the two contradict each other.
+  const ceiling = applyPackCeiling(
+    itemsTotal,
+    items.map((i) => i.photoId),
+    pack,
+    packPrice,
+  );
+  const total = ceiling.total;
+  const count = ceiling.packApplied ? ceiling.packPhotoCount : items.length;
   const listTotal = items.reduce((sum, i) => sum + i.price, 0);
-  const effectiveBase = calcEffectivePricePerPhoto(count, price, discountTiers);
-  const hasItems = count > 0;
+  const effectiveBase = calcEffectivePricePerPhoto(items.length, price, discountTiers);
+  const hasItems = items.length > 0;
 
   const triggerCheckout = () => {
     setOpen(false);
@@ -69,7 +81,9 @@ export function NavCartButton({
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
                 {String(count).padStart(2, "0")} {count === 1 ? "foto" : "fotos"} ·{" "}
                 {total > 0 ? `$${total.toLocaleString("es-AR")}` : "Sin precio"}
-                {listTotal > total && " · descuento aplicado"}
+                {ceiling.packApplied
+                  ? " · pack aplicado"
+                  : listTotal > total && " · descuento aplicado"}
               </p>
             </div>
             <button
@@ -140,6 +154,15 @@ export function NavCartButton({
           {/* Footer */}
           {hasItems && (
             <div className="border-t border-[color:var(--color-grey-300)] px-7 py-6 flex flex-col gap-4 shrink-0">
+              {ceiling.packApplied && (
+                <div className="flex items-start gap-3 border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-3">
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#16a34a] shrink-0" />
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] leading-[1.6] text-[#16a34a]">
+                    Pack aplicado · te llevás las {ceiling.packPhotoCount} fotos, no solo
+                    las {items.length} de esta lista
+                  </p>
+                </div>
+              )}
               {total > 0 && (
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
