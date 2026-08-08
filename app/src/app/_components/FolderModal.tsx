@@ -101,17 +101,22 @@ export function BibCheckoutModal({
   bib,
   photoIds: initialPhotoIds,
   pack,
+  initialPackMode = false,
   collectionId,
   onClose,
 }: {
   bib: string;
   photoIds: string[];
   pack: PackOffer | null;
+  initialPackMode?: boolean;
   collectionId: string;
   onClose: () => void;
 }) {
   const [step, setStep] = useState<Step>("cart");
-  const [packMode, setPackMode] = useState(false);
+  const [packMode, setPackMode] = useState(initialPackMode);
+  // Set when the buyer explicitly leaves the pack, so we stop re-applying it.
+  const [packOptOut, setPackOptOut] = useState(false);
+  const [packAutoApplied, setPackAutoApplied] = useState(false);
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -176,6 +181,25 @@ export function BibCheckoutModal({
   useEffect(() => {
     if (packMode && !packAvailable) setPackMode(false);
   }, [packMode, packAvailable]);
+
+  /**
+   * The pack is a ceiling, not just an upsell: once the selection costs as much
+   * as the pack, charging more than the pack while handing over fewer photos
+   * would be indefensible. Apply it automatically — the buyer can still opt out.
+   */
+  useEffect(() => {
+    if (packMode || packOptOut || !packAvailable || packPrice === null) return;
+    if (individualTotal >= packPrice) {
+      setPackMode(true);
+      setPackAutoApplied(true);
+    }
+  }, [packMode, packOptOut, packAvailable, packPrice, individualTotal]);
+
+  const leavePack = () => {
+    setPackMode(false);
+    setPackAutoApplied(false);
+    setPackOptOut(true);
+  };
 
   const createPreference = api.purchase.createPreference.useMutation({
     onSuccess: (data) => {
@@ -271,6 +295,18 @@ export function BibCheckoutModal({
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.3 }}
                 >
+                  {/* Pack applied on the buyer's behalf */}
+                  {packMode && packAutoApplied && (
+                    <div className="mb-5 flex items-start gap-3 border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-3">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#16a34a] shrink-0" />
+                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] leading-[1.6] text-[#16a34a]">
+                        Te aplicamos el pack · llevás las {packPhotoCount} fotos por $
+                        {(packPrice ?? 0).toLocaleString("es-AR")} en lugar de $
+                        {individualTotal.toLocaleString("es-AR")} por {photoIds.length}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Active tier badge */}
                   {activeTier && !packMode && (
                     <div className="mb-5 flex items-center gap-3 border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-3">
@@ -363,7 +399,7 @@ export function BibCheckoutModal({
                         </>
                       ) : (
                         <button
-                          onClick={() => setPackMode(false)}
+                          onClick={leavePack}
                           className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)] transition-colors"
                         >
                           ← Volver a selección individual

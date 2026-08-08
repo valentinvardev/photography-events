@@ -220,6 +220,74 @@ const SectionLabel = memo(function SectionLabel({ label }: { index?: string; lab
   );
 });
 
+// ─── Results action bar ───────────────────────────────────────────────────────
+// Sits above every result grid: one tap to take the whole set, which is what a
+// runner actually wants after finding themselves.
+
+const ResultsActions = memo(function ResultsActions({
+  photoCount,
+  inCartCount,
+  packPrice,
+  packIndividualTotal,
+  onAddAll,
+  onClearAll,
+  onBuyPack,
+}: {
+  photoCount: number;
+  inCartCount: number;
+  packPrice: number | null;
+  packIndividualTotal: number | null;
+  onAddAll: () => void;
+  onClearAll: () => void;
+  onBuyPack: () => void;
+}) {
+  const allAdded = photoCount > 0 && inCartCount === photoCount;
+  const packIsDeal =
+    packPrice !== null && packIndividualTotal !== null && packPrice < packIndividualTotal;
+  const savings = packIsDeal ? packIndividualTotal - packPrice : 0;
+
+  return (
+    <div className="mb-8 flex flex-col gap-4 border border-[color:var(--color-grey-300)] bg-white/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
+          {photoCount} {photoCount === 1 ? "foto tuya" : "fotos tuyas"}
+          {inCartCount > 0 && ` · ${inCartCount} en el carrito`}
+        </p>
+        {packIsDeal && (
+          <p className="mt-1.5 font-display italic text-[22px] leading-none text-[color:var(--color-ink)]">
+            Llevá todas por ${packPrice.toLocaleString("es-AR")}{" "}
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#16a34a] align-middle">
+              ahorrás ${savings.toLocaleString("es-AR")}
+            </span>
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <button
+          onClick={allAdded ? onClearAll : onAddAll}
+          className="inline-flex items-center gap-2 border border-[color:var(--color-grey-300)] hover:border-[color:var(--color-ink)] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-700)] hover:text-[color:var(--color-ink)] transition-colors"
+        >
+          {allAdded ? "Quitar todas del carrito" : `Agregar las ${photoCount} al carrito`}
+        </button>
+        {packIsDeal && (
+          <button
+            onClick={onBuyPack}
+            className="group inline-flex items-center gap-3 border border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-[color:var(--color-paper)] px-5 py-3 hover:bg-transparent hover:text-[color:var(--color-ink)] transition-colors"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em]">
+              Comprar todas · ${packPrice.toLocaleString("es-AR")}
+            </span>
+            <span className="font-mono text-[10px] tracking-[0.18em] transition-transform group-hover:translate-x-1">
+              →
+            </span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 function trackEvent(type: string, collectionId: string) {
@@ -235,11 +303,13 @@ function trackEvent(type: string, collectionId: string) {
 export function FolderBrowser({
   collectionId,
   pricePerBib,
+  packPrice = null,
   discountTiers = [],
   bibSearchEnabled = true,
 }: {
   collectionId: string;
   pricePerBib: number;
+  packPrice?: number | null;
   discountTiers?: import("~/lib/pricing").DiscountTier[];
   bibSearchEnabled?: boolean;
 }) {
@@ -255,7 +325,12 @@ export function FolderBrowser({
   >("idle");
   const [faceBibs, setFaceBibs] = useState<{ bib: string; photoIds: string[] }[] | null>(null);
   const [faceToken, setFaceToken] = useState<string | null>(null);
-  const [modal, setModal] = useState<{ bib: string; photoIds: string[]; pack: PackOffer | null } | null>(null);
+  const [modal, setModal] = useState<{
+    bib: string;
+    photoIds: string[];
+    pack: PackOffer | null;
+    packMode?: boolean;
+  } | null>(null);
   const [lightbox, setLightbox] = useState<{
     url: string;
     mimeType: string | null;
@@ -426,6 +501,19 @@ export function FolderBrowser({
     return null;
   }, [hasSearch, exactPhotos, showingFace, faceBibs, faceToken, debouncedSearch, buildPack]);
 
+  /** The runner's own photos in the current result set — fuzzy matches excluded. */
+  const resultIds = useMemo(() => {
+    if (hasSearch) return exactPhotos.map((p) => p.id);
+    if (showingFace) return (faceBibs ?? []).flatMap((g) => g.photoIds);
+    return [];
+  }, [hasSearch, exactPhotos, showingFace, faceBibs]);
+
+  const cartIdSet = useMemo(() => new Set(cartItems.map((i) => i.photoId)), [cartItems]);
+  const resultInCartCount = useMemo(
+    () => resultIds.filter((id) => cartIdSet.has(id)).length,
+    [resultIds, cartIdSet],
+  );
+
   // Single batch URL query — converts N per-tile queries into 1 request
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
   const { data: urlData } = api.photo.getPreviewUrls.useQuery(
@@ -513,6 +601,44 @@ export function FolderBrowser({
       const meta = mimeTypeMapRef.current.get(next.id);
       return { ...lb, url, mimeType: meta?.mimeType ?? null, filename: meta?.filename ?? null, bibNumber: next.bibNumber, currentIndex: nextIdx };
     });
+  }, []);
+
+  /** Takes the whole result set in one tap — the runner's actual intent. */
+  const addAllToCart = useCallback(
+    (ids: string[]) => {
+      const byId = new Map(visiblePhotosRef.current.map((p) => [p.id, p]));
+      let added = 0;
+      for (const id of ids) {
+        if (cartSetRef.current.has(id)) continue;
+        const photo = byId.get(id);
+        toggleCart({
+          photoId: id,
+          bibNumber: photo?.bibNumber ?? null,
+          url: urlMapRef.current.get(id) ?? "",
+          price: photo?.price ?? pricePerBib,
+        });
+        added++;
+      }
+      if (added > 0) trackEvent("CART_ADD", collectionId);
+    },
+    [toggleCart, pricePerBib, collectionId],
+  );
+
+  const removeAllFromCart = useCallback(
+    (ids: string[]) => {
+      const target = new Set(ids);
+      for (const item of cartItemsRef.current) {
+        if (target.has(item.photoId)) toggleCart(item);
+      }
+    },
+    [toggleCart],
+  );
+
+  /** Straight to checkout with the pack already applied. */
+  const buyPack = useCallback(() => {
+    const pack = packContextRef.current;
+    if (!pack) return;
+    setModal({ bib: "", photoIds: pack.ids, pack, packMode: true });
   }, []);
 
   const cartCheckout = useCallback(() => {
@@ -726,6 +852,15 @@ export function FolderBrowser({
       {showingFace && faceBibs && faceBibs.length > 0 && (
         <div className="mb-20">
           <SectionLabel label="Reconocimiento facial." />
+          <ResultsActions
+            photoCount={resultIds.length}
+            inCartCount={resultInCartCount}
+            packPrice={packPrice}
+            packIndividualTotal={packContext?.individualTotal ?? null}
+            onAddAll={() => addAllToCart(resultIds)}
+            onClearAll={() => removeAllFromCart(resultIds)}
+            onBuyPack={buyPack}
+          />
           <div className={GRID}>
             {faceBibs.flatMap((g, gi) =>
               g.photoIds.map((id, pi) => (
@@ -777,11 +912,22 @@ export function FolderBrowser({
           {!searchLoading && allSearchPhotos.length > 0 && (
             <>
               <SectionLabel label={`Dorsal #${debouncedSearch}.`} />
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-8">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)] mb-6">
                 {exactPhotos.length} {exactPhotos.length === 1 ? "foto" : "fotos"}
                 {fuzzyPhotos.length > 0 &&
                   ` · ${fuzzyPhotos.length} similar${fuzzyPhotos.length !== 1 ? "es" : ""}`}
               </p>
+              {exactPhotos.length > 0 && (
+                <ResultsActions
+                  photoCount={resultIds.length}
+                  inCartCount={resultInCartCount}
+                  packPrice={packPrice}
+                  packIndividualTotal={packContext?.individualTotal ?? null}
+                  onAddAll={() => addAllToCart(resultIds)}
+                  onClearAll={() => removeAllFromCart(resultIds)}
+                  onBuyPack={buyPack}
+                />
+              )}
               <div className={GRID}>
                 {allSearchPhotos.map((p, i) => (
                   <PhotoTile
@@ -998,6 +1144,7 @@ export function FolderBrowser({
           bib={modal.bib}
           photoIds={modal.photoIds}
           pack={modal.pack}
+          initialPackMode={modal.packMode ?? false}
           collectionId={collectionId}
           onClose={() => setModal(null)}
         />

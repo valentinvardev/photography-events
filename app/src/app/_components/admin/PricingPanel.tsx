@@ -195,7 +195,7 @@ export function PricingPanel({
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-grey-500)]">
-            Precio pack (todas las fotos)
+            Precio pack (todas las fotos reconocidas)
           </p>
           <button
             onClick={() => setPackEnabled((v) => !v)}
@@ -217,9 +217,17 @@ export function PricingPanel({
               onChange={(e) => setPackPrice(Math.max(0, parseFloat(e.target.value) || 0))}
               className="w-full border border-[color:var(--color-grey-300)] bg-[color:var(--color-paper)] px-4 py-2.5 font-display italic text-[22px] text-[color:var(--color-ink)] focus:border-[color:var(--color-ink)] outline-none"
             />
-            <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] text-[color:var(--color-grey-400)]">
-              Precio fijo para comprar todas las fotos encontradas en la búsqueda
+            <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-400)]">
+              Techo del total. Si las fotos que encontró el corredor suman más que esto,
+              se le cobra este precio y se lleva todas. Si suman menos, el pack no se
+              ofrece.
             </p>
+            {packPrice > 0 && pricePerBib > 0 && (
+              <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] leading-[1.7] text-[color:var(--color-grey-500)]">
+                Con el precio base actual, el pack empieza a convenir a partir de{" "}
+                {Math.floor(packPrice / pricePerBib) + 1} fotos
+              </p>
+            )}
           </>
         )}
       </div>

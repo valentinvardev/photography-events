@@ -78,6 +78,11 @@ export default async function CollectionPage({
         <FolderBrowser
           collectionId={collection.id}
           pricePerBib={price}
+          packPrice={
+            collection.packPrice !== null && collection.packPrice !== undefined
+              ? Number(collection.packPrice)
+              : null
+          }
           discountTiers={tiers}
           bibSearchEnabled={collection.bibSearchEnabled ?? true}
         />

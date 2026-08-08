@@ -406,6 +406,31 @@ cliente nunca manda un monto.
 4. **Modo pack**: se cobra `min(packPrice, total_individual)` — el pack nunca puede salir más caro
    que comprar esas mismas fotos sueltas.
 
+### El pack es un techo, no un upsell
+
+`packPrice` ("todas las fotos reconocidas por $X") **topea el total**. En cuanto la selección del
+comprador cuesta lo mismo que el pack, el checkout lo aplica solo y le entrega el conjunto completo
+—cobrarle más que el pack dándole menos fotos no se sostiene—. El comprador puede salirse con
+"Volver a selección individual", y esa decisión se respeta (`packOptOut`) para que el efecto no se
+la vuelva a imponer.
+
+Ejemplo con base $5.000 y pack $50.000, sobre un corredor con 15 fotos:
+
+| Selecciona | Individual | Pack disponible | Se aplica solo | Entrega | Cobra |
+|---:|---:|:---:|:---:|---:|---:|
+| 3 | $15.000 | sí (upsell) | no | 3 | $15.000 |
+| 12 | $60.000 | sí | **sí** | **15** | **$50.000** |
+| 15 | $75.000 | sí | **sí** | 15 | **$50.000** |
+
+El pack no se ofrece cuando no le gana al total individual (con 5 fotos, $25.000 < $50.000).
+
+### Botón "llevar todas"
+
+Sobre cada grilla de resultados —dorsal y cara— hay una `ResultsActions` con el conteo, "Agregar
+las N al carrito" y, si el pack conviene, "Comprar todas · $X" con el ahorro. Es el atajo para lo
+que el corredor realmente quiere después de encontrarse. Solo aparece en resultados de búsqueda: la
+galería sin buscar no es un conjunto "reconocido".
+
 ### Validación del pack
 
 El pack es un precio plano por "todas las fotos de tu búsqueda", así que el servidor tiene que saber
