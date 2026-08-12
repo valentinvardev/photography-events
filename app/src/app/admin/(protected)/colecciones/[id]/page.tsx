@@ -169,7 +169,7 @@ export default async function EditCollectionPage({
 
         {/* Reindex + Watermark */}
         <div className="px-6 py-4 border-t border-[color:var(--color-grey-300)] flex items-center gap-6 flex-wrap">
-          <FaceReindexButton collectionId={collection.id} totalPhotos={totalCount} />
+          <FaceReindexButton collectionId={collection.id} />
           <WatermarkAllButton collectionId={collection.id} />
         </div>
       </div>

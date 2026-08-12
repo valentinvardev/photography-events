@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "~/server/db";
 
-const VALID_TYPES = new Set(["VISIT", "SEARCH_BIB", "SEARCH_FACE", "CART_ADD"]);
+// SEARCH_FACE_* variants all represent a paid Rekognition call. Counting only
+// the successful ones hid part of the bill.
+const VALID_TYPES = new Set([
+  "VISIT",
+  "SEARCH_BIB",
+  "SEARCH_FACE",
+  "SEARCH_FACE_NO_MATCH",
+  "SEARCH_FACE_NO_FACE",
+  "SEARCH_FACE_ERROR",
+  "CART_ADD",
+]);
 
 export async function POST(req: NextRequest) {
   try {

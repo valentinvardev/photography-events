@@ -193,6 +193,10 @@ export const collectionRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
+      // Drop the Rekognition collection first: its stored faces are billed
+      // monthly forever, and once our rows are gone we lose the handle to them.
+      const { deleteRekognitionCollection } = await import("~/lib/rekognition");
+      await deleteRekognitionCollection(id);
       await ctx.db.purchase.deleteMany({ where: { collectionId: id } });
       await ctx.db.photo.deleteMany({ where: { collectionId: id } });
       return ctx.db.collection.delete({ where: { id } });

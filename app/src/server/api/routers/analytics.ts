@@ -18,13 +18,17 @@ export const analyticsRouter = createTRPCRouter({
         : new Date(Date.now() - PERIODS["24h"]);
       const where = { createdAt: { gte: since } };
 
-      const [visits, searchBib, searchFace, cartAdds] = await Promise.all([
+      const [visits, searchBib, searchFace, searchFaceBilled, cartAdds] = await Promise.all([
         ctx.db.analyticsEvent.count({ where: { ...where, type: "VISIT" } }),
         ctx.db.analyticsEvent.count({ where: { ...where, type: "SEARCH_BIB" } }),
         ctx.db.analyticsEvent.count({ where: { ...where, type: "SEARCH_FACE" } }),
+        // Every SEARCH_FACE* variant already cost a Rekognition call, hit or miss.
+        ctx.db.analyticsEvent.count({
+          where: { ...where, type: { startsWith: "SEARCH_FACE" } },
+        }),
         ctx.db.analyticsEvent.count({ where: { ...where, type: "CART_ADD" } }),
       ]);
 
-      return { visits, searchBib, searchFace, cartAdds };
+      return { visits, searchBib, searchFace, searchFaceBilled, cartAdds };
     }),
 });

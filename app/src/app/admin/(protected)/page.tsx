@@ -38,7 +38,12 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border-x border-b border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-300)] mb-10">
         <StatCard label="Visitas" value={analyticsStats.visits} sub="últimas 24h" dim />
         <StatCard label="Búsquedas dorsal" value={analyticsStats.searchBib} sub="últimas 24h" dim />
-        <StatCard label="Búsquedas selfie" value={analyticsStats.searchFace} sub="últimas 24h" dim />
+        <StatCard
+          label="Búsquedas selfie"
+          value={analyticsStats.searchFace}
+          sub={`${analyticsStats.searchFaceBilled} llamadas facturadas · 24h`}
+          dim
+        />
         <StatCard label="Agregados al carrito" value={analyticsStats.cartAdds} sub="últimas 24h" dim />
       </div>
 

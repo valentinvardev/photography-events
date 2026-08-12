@@ -5,15 +5,27 @@
 
 import sharp from "sharp";
 import {
-  RekognitionClient,
   DetectTextCommand,
-  CreateCollectionCommand,
   IndexFacesCommand,
+  type Image as RekImage,
 } from "@aws-sdk/client-rekognition";
 import { db } from "~/server/db";
 import { getAdminClient } from "~/lib/supabase/admin";
 import { WATERMARK_KEY } from "~/lib/watermark";
-import { getS3ObjectBytes, putS3Object, deleteS3Objects, isS3Key, s3Key } from "~/lib/s3";
+import {
+  getS3ObjectBytes,
+  putS3Object,
+  deleteS3Objects,
+  isS3Key,
+  s3Key,
+  S3_BUCKET,
+} from "~/lib/s3";
+import {
+  getRekognitionClient,
+  rekSend,
+  ensureRekognitionCollection,
+  deleteIndexedFaces,
+} from "~/lib/rekognition";
 
 // ── Storage backend helpers ───────────────────────────────────────────────────
 
@@ -33,15 +45,29 @@ async function downloadBytes(storageKey: string): Promise<Uint8Array | null> {
   return new Uint8Array(await data.arrayBuffer());
 }
 
-// ── Rekognition client (shared) ───────────────────────────────────────────────
+// ── Rekognition ───────────────────────────────────────────────────────────────
 
-const rekognition = new RekognitionClient({
-  region: process.env.AWS_REGION ?? "sa-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+const rekognition = getRekognitionClient();
+
+/**
+ * How we hand an image to Rekognition.
+ *
+ * S3Object whenever possible: it skips downloading the original to this box
+ * only to upload it straight back to AWS (paying S3 egress for nothing), and it
+ * raises the size limit from 5 MB to 15 MB. With `Bytes`, every original over
+ * 5 MB threw ImageTooLargeException into a swallowed catch and silently never
+ * got indexed. Legacy Supabase keys still have to go through bytes.
+ *
+ * Requires the bucket to live in REK_REGION — both come from AWS_REGION, which
+ * is now resolved in one place precisely so they can't drift apart.
+ */
+async function buildRekognitionImage(storageKey: string): Promise<RekImage | null> {
+  if (isS3Key(storageKey)) {
+    return { S3Object: { Bucket: S3_BUCKET, Name: storageKey } };
+  }
+  const bytes = await downloadBytes(storageKey);
+  return bytes ? { Bytes: bytes } : null;
+}
 
 // ── OCR ───────────────────────────────────────────────────────────────────────
 
@@ -91,11 +117,14 @@ export async function runOcr(photoId: string): Promise<{ bib: string | null }> {
   if (!photo) return { bib: null };
   if (photo.bibNumber !== null) return { bib: photo.bibNumber };
 
-  const imageBytes = await downloadBytes(photo.storageKey);
-  if (!imageBytes) { console.error("[OCR] Download failed:", photo.storageKey); return { bib: null }; }
+  const image = await buildRekognitionImage(photo.storageKey);
+  if (!image) { console.error("[OCR] Image unavailable:", photo.storageKey); return { bib: null }; }
 
   try {
-    const response = await rekognition.send(new DetectTextCommand({ Image: { Bytes: imageBytes } }));
+    const response = await rekSend(
+      { op: "DetectText", imageKey: photo.storageKey },
+      () => rekognition.send(new DetectTextCommand({ Image: image })),
+    );
     const bibs = extractAllBibs(response.TextDetections ?? []);
 
     console.log(`[OCR] photoId=${photoId} bibs=${bibs.join(",") || "none"}`);
@@ -218,39 +247,51 @@ export async function runWatermark(photoId: string): Promise<{ previewKey: strin
 
 // ── Face index ────────────────────────────────────────────────────────────────
 
-function rekognitionCollectionId(collectionId: string) {
-  return `foto-${collectionId.replace(/[^a-zA-Z0-9_.\-]/g, "-")}`;
-}
-
-async function ensureRekognitionCollection(collId: string) {
-  try {
-    await rekognition.send(new CreateCollectionCommand({ CollectionId: collId }));
-  } catch (err: unknown) {
-    if ((err as { name?: string }).name !== "ResourceAlreadyExistsException") throw err;
-  }
-}
-
-export async function runFaceIndex(photoId: string, collectionId: string): Promise<void> {
+/**
+ * Indexes the faces in a photo.
+ *
+ * Idempotent by default: IndexFaces mints brand-new FaceIds on every run, so
+ * calling it twice doesn't refresh anything — it pays for the call again and
+ * doubles the stored faces, which are billed monthly forever. Pass `force` to
+ * genuinely re-index; the previous faces are deleted first so nothing leaks.
+ */
+export async function runFaceIndex(
+  photoId: string,
+  collectionId: string,
+  opts: { force?: boolean } = {},
+): Promise<{ indexed: number; skipped: boolean }> {
   const photo = await db.photo.findUnique({
     where: { id: photoId },
     select: { id: true, storageKey: true },
   });
-  if (!photo) return;
+  if (!photo) return { indexed: 0, skipped: true };
 
-  const imageBytes = await downloadBytes(photo.storageKey);
-  if (!imageBytes) { console.error("[FaceIndex] Download failed:", photo.storageKey); return; }
+  const existing = await db.faceRecord.findMany({
+    where: { photoId },
+    select: { rekFaceId: true, collectionId: true },
+  });
 
-  const rekCollectionId = rekognitionCollectionId(collectionId);
+  if (existing.length > 0) {
+    if (!opts.force) return { indexed: existing.length, skipped: true };
+    await deleteIndexedFaces(existing);
+    await db.faceRecord.deleteMany({ where: { photoId } });
+  }
+
+  const image = await buildRekognitionImage(photo.storageKey);
+  if (!image) { console.error("[FaceIndex] Image unavailable:", photo.storageKey); return { indexed: 0, skipped: true }; }
 
   try {
-    await ensureRekognitionCollection(rekCollectionId);
-    const result = await rekognition.send(new IndexFacesCommand({
-      CollectionId: rekCollectionId,
-      Image: { Bytes: imageBytes },
-      ExternalImageId: photoId,
-      DetectionAttributes: [],
-      MaxFaces: 10,
-    }));
+    const rekCollection = await ensureRekognitionCollection(collectionId);
+    const result = await rekSend(
+      { op: "IndexFaces", imageKey: photo.storageKey, collectionId: rekCollection },
+      () => rekognition.send(new IndexFacesCommand({
+        CollectionId: rekCollection,
+        Image: image,
+        ExternalImageId: photoId,
+        DetectionAttributes: [],
+        MaxFaces: 10,
+      })),
+    );
 
     const indexed = result.FaceRecords ?? [];
     console.log(`[FaceIndex] photoId=${photoId} indexed ${indexed.length} faces`);
@@ -264,7 +305,9 @@ export async function runFaceIndex(photoId: string, collectionId: string): Promi
         create: { rekFaceId: faceId, photoId, collectionId, confidence: fr.Face?.Confidence ?? null },
       });
     }
+    return { indexed: indexed.length, skipped: false };
   } catch (err) {
     console.error(`[FaceIndex] Error for photoId=${photoId}:`, err);
+    return { indexed: 0, skipped: false };
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "~/lib/s3";
 import { resolveMediaUrl } from "~/lib/media";
 import { isVideoMimeType } from "~/lib/video-utils";
+import type { PrismaClient } from "../../../../generated/prisma";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -23,6 +24,24 @@ const ACCEPTED_CONTENT_TYPES = z.string().refine(
   (t) => t.startsWith("image/") || t.startsWith("video/"),
   { message: "Solo se aceptan imágenes y videos" },
 );
+
+/**
+ * Drops these photos' faces from Rekognition.
+ *
+ * Must run *before* the rows are deleted: FaceRecord cascades away with the
+ * Photo, and once the ids are gone we have no way to tell Rekognition to stop
+ * charging for them — stored faces are billed every month, indefinitely.
+ */
+async function releaseIndexedFaces(db: PrismaClient, photoIds: string[]) {
+  if (photoIds.length === 0) return;
+  const faces = await db.faceRecord.findMany({
+    where: { photoId: { in: photoIds } },
+    select: { rekFaceId: true, collectionId: true },
+  });
+  if (faces.length === 0) return;
+  const { deleteIndexedFaces } = await import("~/lib/rekognition");
+  await deleteIndexedFaces(faces);
+}
 
 export const photoRouter = createTRPCRouter({
   // ─── Public ────────────────────────────────────────────────────────────────
@@ -270,6 +289,8 @@ export const photoRouter = createTRPCRouter({
         if (client) await client.storage.from("photos").remove(supabaseKeys);
       }
 
+      await releaseIndexedFaces(ctx.db, [input.id]);
+
       return ctx.db.photo.delete({ where: { id: input.id } });
     }),
 
@@ -292,6 +313,8 @@ export const photoRouter = createTRPCRouter({
         const client = getAdminClient();
         if (client) await client.storage.from("photos").remove(supabaseKeys);
       }
+
+      await releaseIndexedFaces(ctx.db, input.ids);
 
       await ctx.db.photo.deleteMany({ where: { id: { in: input.ids } } });
     }),

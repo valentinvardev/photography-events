@@ -26,7 +26,11 @@
         "rekognition:SearchFaces",
         "rekognition:SearchFacesByImage",
         "rekognition:CreateCollection",
-        "rekognition:ListCollections"
+        "rekognition:ListCollections",
+        "rekognition:DescribeCollection",
+        "rekognition:ListFaces",
+        "rekognition:DeleteFaces",
+        "rekognition:DeleteCollection"
       ],
       "Resource": "*"
     }

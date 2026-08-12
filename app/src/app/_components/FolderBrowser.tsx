@@ -321,7 +321,7 @@ export function FolderBrowser({
   const [galleryFilter, setGalleryFilter] = useState<"all" | "bib" | "no-bib">("all");
   const [faceActive, setFaceActive] = useState(false);
   const [faceStatus, setFaceStatus] = useState<
-    "idle" | "uploading" | "done" | "no-face" | "error"
+    "idle" | "uploading" | "done" | "no-face" | "error" | "rate-limited"
   >("idle");
   const [faceBibs, setFaceBibs] = useState<{ bib: string; photoIds: string[] }[] | null>(null);
   const [faceToken, setFaceToken] = useState<string | null>(null);
@@ -725,23 +725,32 @@ export function FolderBrowser({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: base64, collectionId }),
       });
+      if (resp.status === 429) {
+        setFaceStatus("rate-limited");
+        return;
+      }
       if (!resp.ok) throw new Error(`status ${resp.status}`);
       const json = (await resp.json()) as {
         groups: { bib: string; photoIds: string[] }[];
         packToken?: string | null;
         noFaceDetected?: boolean;
       };
+      // Every branch below already cost a Rekognition call, so all of them get
+      // counted. Tracking only the successful ones made the analytics
+      // undercount what we actually pay for.
       if (json.noFaceDetected) {
+        trackEvent("SEARCH_FACE_NO_FACE", collectionId);
         setFaceStatus("no-face");
         return;
       }
+      trackEvent(json.groups.length > 0 ? "SEARCH_FACE" : "SEARCH_FACE_NO_MATCH", collectionId);
       setFaceToken(json.packToken ?? null);
       setFaceBibs(json.groups);
       setFaceStatus("done");
       setFaceActive(true);
-      trackEvent("SEARCH_FACE", collectionId);
     } catch (err) {
       console.error("[face-search] upload error:", err);
+      trackEvent("SEARCH_FACE_ERROR", collectionId);
       setFaceStatus("error");
     }
   };
@@ -853,6 +862,11 @@ export function FolderBrowser({
               >
                 intentar otra
               </button>
+            </p>
+          )}
+          {faceStatus === "rate-limited" && (
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-safelight)]">
+              Demasiadas búsquedas seguidas · esperá un rato e intentá de nuevo
             </p>
           )}
           {faceStatus === "error" && (
