@@ -29,7 +29,9 @@ export function CoverUploader({
     setStatus("uploading");
     setErrorMsg("");
 
-    const path = `covers/${collectionId}.${file.name.split(".").pop() ?? "jpg"}`;
+    // Key versionada: sobreescribir la misma key dejaba la portada vieja en
+    // CloudFront y en el cache del optimizador de imagenes hasta 31 dias.
+    const path = `covers/${collectionId}-${Date.now()}.${file.name.split(".").pop() ?? "jpg"}`;
 
     try {
       const signRes = await fetch("/api/uploads/sign", {

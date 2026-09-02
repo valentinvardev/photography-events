@@ -29,7 +29,9 @@ export function ImageUpload({
     setErrorMsg("");
 
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${storagePath}.${ext}`;
+    // Key versionada: reusar la misma key dejaba la imagen vieja cacheada en
+    // CloudFront y en el optimizador hasta 31 dias despues de reemplazarla.
+    const path = `${storagePath}-${Date.now()}.${ext}`;
 
     try {
       const signRes = await fetch("/api/uploads/sign", {

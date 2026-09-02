@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export type CategoryCol = {
   id: string;
@@ -39,17 +40,21 @@ export function CategoryCard({
 
       {/* image frame */}
       <div className="relative aspect-[4/3] overflow-hidden bg-[color:var(--color-grey-900)] viewfinder-corners">
-        {cat.coverUrl ? (
+        {cat.coverUrl?.startsWith("http") ? (
+          <Image
+            src={cat.coverUrl}
+            alt={cat.name}
+            fill
+            priority={priority}
+            sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 380px"
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+          />
+        ) : cat.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cat.coverUrl}
             alt={cat.name}
-            loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "low"}
-            decoding="async"
-            width={800}
-            height={600}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

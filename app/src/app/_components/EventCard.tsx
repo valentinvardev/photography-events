@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 export type EventCardCol = {
   title: string;
   description?: string | null;
@@ -35,7 +36,11 @@ export function EventCard({
 
   const focalY = col.bannerFocalY ?? 0.5;
   const objectPosition = `center ${Math.round(focalY * 100)}%`;
+  // El banner manda: bannerFocalY se calibra arrastrando el banner en el
+  // admin, asi que el objectPosition solo tiene sentido sobre esa imagen.
   const cover = col.bannerUrl ?? col.coverUrl;
+  // El preview del admin pasa blob: URLs, que next/image rechaza.
+  const optimizable = !!cover && cover.startsWith("http");
   const num = String(index + 1).padStart(2, "0");
 
   const card = (
@@ -54,18 +59,25 @@ export function EventCard({
 
       {/* image frame */}
       <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--color-grey-900)] viewfinder-corners">
-        {cover ? (
-          /* Los banners son los originales completos (~3 MB promedio) mostrados
-             a ~380 px. Sin diferirlos, el home dispara los 39 de una: ~124 MB. */
+        {cover && optimizable ? (
+          /* Las portadas guardadas son los originales completos (~3 MB
+             promedio) mostrados a ~380 px. next/image sirve un derivado
+             redimensionado (~120 KB, WebP) y lo cachea en el VPS. */
+          <Image
+            src={cover}
+            alt={col.title}
+            fill
+            priority={priority}
+            sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 380px"
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            style={{ objectPosition }}
+          />
+        ) : cover ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cover}
             alt={col.title}
-            loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "low"}
-            decoding="async"
-            width={800}
-            height={1000}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition }}
           />
         ) : (
