@@ -17,10 +17,13 @@ export function EventCard({
   col,
   index = 0,
   preview,
+  priority = false,
 }: {
   col: EventCardCol;
   index?: number;
   preview?: boolean;
+  /** Solo para las cards de la primera fila: son el LCP y no deben diferirse. */
+  priority?: boolean;
 }) {
   const dateStr = col.eventDate
     ? new Intl.DateTimeFormat("es-AR", {
@@ -52,9 +55,16 @@ export function EventCard({
       {/* image frame */}
       <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--color-grey-900)] viewfinder-corners">
         {cover ? (
+          /* Los banners son los originales completos (~3 MB promedio) mostrados
+             a ~380 px. Sin diferirlos, el home dispara los 39 de una: ~124 MB. */
           <img
             src={cover}
             alt={col.title}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "low"}
+            decoding="async"
+            width={800}
+            height={1000}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
             style={{ objectPosition }}
           />

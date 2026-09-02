@@ -111,8 +111,8 @@ export default async function CategoryPage({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-16">
               {collections.map((col, i) => (
-                <Reveal key={col.id} variant="lift" delay={i * 0.06}>
-                  <EventCard col={col} index={i} />
+                <Reveal key={col.id} variant="lift" delay={(i % 4) * 0.06}>
+                  <EventCard col={col} index={i} priority={i < 4} />
                 </Reveal>
               ))}
             </div>

@@ -74,8 +74,10 @@ export default async function HomePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-16">
               {collections.map((col, i) => (
-                <Reveal key={col.id} variant="lift" delay={i * 0.06}>
-                  <EventCard col={col} index={i} />
+                // El stagger se reinicia por fila: con delay={i * 0.06} la card 39
+                // tardaba 2,3 s en aparecer DESPUES de scrollear hasta ella.
+                <Reveal key={col.id} variant="lift" delay={(i % 4) * 0.06}>
+                  <EventCard col={col} index={i} priority={i < 4} />
                 </Reveal>
               ))}
             </div>
@@ -103,7 +105,7 @@ export default async function HomePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-16">
               {categories.map((cat, i) => (
-                <Reveal key={cat.id} variant="lift" delay={i * 0.06}>
+                <Reveal key={cat.id} variant="lift" delay={(i % 4) * 0.06}>
                   <CategoryCard cat={cat} index={i} />
                 </Reveal>
               ))}

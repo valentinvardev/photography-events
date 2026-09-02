@@ -14,9 +14,12 @@ export type CategoryCol = {
 export function CategoryCard({
   cat,
   index = 0,
+  priority = false,
 }: {
   cat: CategoryCol;
   index?: number;
+  /** Solo para la primera fila: es el LCP y no debe diferirse. */
+  priority?: boolean;
 }) {
   const num = String(index + 1).padStart(2, "0");
   const href = cat.buttonHref && cat.buttonHref.trim().length > 0
@@ -41,6 +44,11 @@ export function CategoryCard({
           <img
             src={cat.coverUrl}
             alt={cat.name}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "low"}
+            decoding="async"
+            width={800}
+            height={600}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
           />
         ) : (
