@@ -71,6 +71,43 @@ export async function createS3DownloadUrl(
   return getSignedUrl(s3, command, { expiresIn });
 }
 
+/**
+ * Content-Disposition that forces a download under the original filename:
+ * an ASCII fallback plus the RFC 5987 filename* for accents. Quotes,
+ * backslashes and control characters (CR/LF) are replaced so a filename can
+ * never break out of the header.
+ */
+export function attachmentDisposition(filename: string): string {
+  const ascii = filename
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\]/g, "_");
+  // encodeURIComponent leaves ' ( ) * alone, but they aren't RFC 5987
+  // attr-chars — and ' is the delimiter in filename*=UTF-8''.
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+/** Presigned GET that downloads as a file instead of opening in the browser. */
+export async function createS3AttachmentUrl(
+  key: string,
+  filename: string,
+  contentType: string,
+  expiresIn = 300,
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: key,
+    ResponseContentDisposition: attachmentDisposition(filename),
+    ResponseContentType: contentType,
+  });
+  return getSignedUrl(s3, command, { expiresIn });
+}
+
 /** Descarga el contenido de un objeto S3 como bytes. */
 export async function getS3ObjectBytes(key: string): Promise<Uint8Array> {
   const response = await s3.send(

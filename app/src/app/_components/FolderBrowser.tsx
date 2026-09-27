@@ -539,7 +539,19 @@ export function FolderBrowser({
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
   const { data: urlData } = api.photo.getPreviewUrls.useQuery(
     { ids: visibleIds },
-    { enabled: visibleIds.length > 0, staleTime: 50 * 60 * 1000 }, // signed URLs live for 1hr
+    {
+      enabled: visibleIds.length > 0,
+      staleTime: 50 * 60 * 1000, // signed URLs live for 1hr
+      // Photos still being watermarked come back without a URL and would sit
+      // as skeletons until a reload. Poll while any are missing, for a few
+      // minutes at most: one that never gets a preview shouldn't poll forever.
+      refetchInterval: (query) =>
+        query.state.data &&
+        query.state.data.length < visibleIds.length &&
+        query.state.dataUpdateCount < 20
+          ? 15_000
+          : false,
+    },
   );
   const urlMap = useMemo(
     () => new Map(urlData?.map((u) => [u.id, u.url]) ?? []),

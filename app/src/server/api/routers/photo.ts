@@ -74,14 +74,15 @@ export const photoRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const q = input.bib.trim();
 
+      // Never storageKey/previewKey here: this response is public, and
+      // CloudFront serves any key in the bucket — originals included — so a key
+      // in the browser is a free, unwatermarked download.
       const select = {
         id: true,
         bibNumber: true,
         price: true,
         mimeType: true,
         filename: true,
-        storageKey: true,
-        previewKey: true,
       } as const;
 
       const exact = await ctx.db.photo.findMany({
@@ -139,13 +140,16 @@ export const photoRouter = createTRPCRouter({
   getPreviewUrls: publicProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .query(async ({ ctx, input }) => {
+      // Only photos whose watermarked preview exists. Falling back to storageKey
+      // showed the public the unwatermarked original for every photo still
+      // being processed after an upload.
       const photos = await ctx.db.photo.findMany({
-        where: { id: { in: input.ids } },
-        select: { id: true, storageKey: true, previewKey: true, mimeType: true, filename: true },
+        where: { id: { in: input.ids }, previewKey: { not: null } },
+        select: { id: true, previewKey: true, mimeType: true, filename: true },
       });
       const results = await Promise.all(
         photos.map(async (p) => {
-          const key = p.previewKey ?? p.storageKey;
+          const key = p.previewKey!;
           const ct = p.mimeType ?? (/\.(mp4|mov|webm|mkv|m4v)$/i.test(p.filename) ? "video/mp4" : undefined);
           const url = isS3Key(key)
             ? await resolveMediaUrl(key, { contentType: ct ?? undefined })

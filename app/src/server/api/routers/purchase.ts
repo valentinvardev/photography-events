@@ -134,7 +134,11 @@ export const purchaseRouter = createTRPCRouter({
           buyerLastName: input.buyerLastName,
           buyerPhone: input.buyerPhone,
           amountPaid: totalAmount,
-          photoIds: JSON.stringify(input.photoIds),
+          // Only the photos that were validated against this collection and
+          // priced above. Storing input.photoIds raw let a buyer pay for one
+          // photo and append ids from any other album: they weren't charged,
+          // but the download endpoint authorized them.
+          photoIds: JSON.stringify(photos.map((p) => p.id)),
         },
       });
 
@@ -223,17 +227,17 @@ export const purchaseRouter = createTRPCRouter({
       if (!purchase) return null;
       if (purchase.status !== "APPROVED") return null;
 
+      // Same rule as /api/download/file: the purchase's own ids, inside its own
+      // collection, and nothing when no ids were recorded. The old fallback
+      // for purchases without photoIds matched on a null bibNumber, i.e. the
+      // whole album, with 24 h presigned originals.
       const purchasedIds = parsePhotoIds(purchase.photoIds);
-      const photos = await ctx.db.photo.findMany({
-        where: purchasedIds.length > 0
-          ? { id: { in: purchasedIds } }
-          : {
-              // Legacy fallback for purchases created before photoIds was tracked
-              collectionId: purchase.collectionId,
-              bibNumber: purchase.bibNumber ?? undefined,
-            },
-        orderBy: { order: "asc" },
-      });
+      const photos = purchasedIds.length
+        ? await ctx.db.photo.findMany({
+            where: { id: { in: purchasedIds }, collectionId: purchase.collectionId },
+            orderBy: { order: "asc" },
+          })
+        : [];
 
       const photoUrls = await Promise.all(
         photos.map(async (photo) => {

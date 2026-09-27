@@ -14,10 +14,16 @@ export function getAdminClient() {
   return _client;
 }
 
-export async function createSignedUrl(storageKey: string, expiresIn: number): Promise<string | null> {
+export async function createSignedUrl(
+  storageKey: string,
+  expiresIn: number,
+  opts?: { download?: string },
+): Promise<string | null> {
   if (storageKey.startsWith("http")) return storageKey;
   const client = getAdminClient();
   if (!client) return null;
-  const { data } = await client.storage.from("photos").createSignedUrl(storageKey, expiresIn);
+  const { data } = await client.storage
+    .from("photos")
+    .createSignedUrl(storageKey, expiresIn, opts?.download ? { download: opts.download } : undefined);
   return data?.signedUrl ?? null;
 }

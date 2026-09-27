@@ -2,12 +2,18 @@ import { api } from "~/trpc/server";
 import Link from "next/link";
 import { PhotoGallery } from "~/app/_components/PhotoGallery";
 
+// What /api/download/file sends back; anything else in ?error= is ignored.
+const DOWNLOAD_ERROR_CODES = ["link", "foto", "archivo"] as const;
+
 export default async function DownloadPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { token } = await params;
+  const { error } = await searchParams;
   const info = await api.purchase.getDownloadInfo({ token });
 
   if (!info) {
@@ -57,11 +63,14 @@ export default async function DownloadPage({
                   →
                 </span>
               </Link>
+              {/* hola@ivanamaritano.com.ar bounces: the domain doesn't exist. */}
               <a
-                href="mailto:hola@ivanamaritano.com.ar"
+                href="https://wa.me/5493518000368"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="link-draw font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/80"
               >
-                Escribirnos
+                Escribinos por WhatsApp
               </a>
             </div>
           </div>
@@ -79,6 +88,7 @@ export default async function DownloadPage({
       isPublicInit={info.isPublic}
       photos={info.photos}
       suggestions={info.suggestions}
+      errorCode={DOWNLOAD_ERROR_CODES.find((c) => c === error) ?? null}
     />
   );
 }

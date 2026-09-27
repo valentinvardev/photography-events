@@ -181,11 +181,14 @@ function PendingPageInner() {
                 →
               </span>
             </Link>
+            {/* hola@ivanamaritano.com.ar bounces: the domain doesn't exist. */}
             <a
-              href="mailto:hola@ivanamaritano.com.ar"
+              href="https://wa.me/5493518000368"
+              target="_blank"
+              rel="noopener noreferrer"
               className="link-draw font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-paper)]/80"
             >
-              ¿Pasó algo? Escribirnos
+              ¿Pasó algo? Escribinos por WhatsApp
             </a>
           </motion.div>
         </div>
