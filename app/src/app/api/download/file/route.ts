@@ -73,6 +73,28 @@ export async function GET(request: NextRequest) {
   if (!token) return fail("link");
   if (!photoId) return fail("archivo");
 
+  try {
+    return await authorizeAndRedirect(token, photoId, fail);
+  } catch (err) {
+    // A DB or signing failure (pooler timeout, dropped connection) has to
+    // reach the buyer like the checked ones: the frame's message or the
+    // redirect. Unhandled, Next answers a blank 500, which is invisible inside
+    // a frame. Only the error's kind is logged: Prisma messages echo the query
+    // arguments, the download token among them.
+    console.error("[download/file]", {
+      photoId,
+      error: err instanceof Error ? err.name : typeof err,
+      code: (err as { code?: unknown } | null)?.code,
+    });
+    return fail("archivo");
+  }
+}
+
+async function authorizeAndRedirect(
+  token: string,
+  photoId: string,
+  fail: (error: DownloadError) => NextResponse,
+) {
   // In parallel: from the VPS each round trip to the pooler costs ~1.2 s, and
   // the photo lookup doesn't depend on the purchase. Nothing about the photo
   // is returned until the purchase authorizes it.

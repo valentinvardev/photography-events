@@ -80,7 +80,13 @@ export function PhotoGallery({
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [shareState, setShareState] = useState<"idle" | "copied">("idle");
   // Desktop batch progress; null when idle.
-  const [batch, setBatch] = useState<{ done: number; total: number; stage: BatchStage } | null>(null);
+  // `missing`: photos left out of a finished ZIP, so the button can't say "Listo".
+  const [batch, setBatch] = useState<{
+    done: number;
+    total: number;
+    stage: BatchStage;
+    missing?: number;
+  } | null>(null);
   // The guard lives in a ref, not in `batch`: a double click lands before the
   // re-render, so both clicks would read batch === null and build two ZIPs.
   const batchRunning = useRef(false);
@@ -238,6 +244,8 @@ export function PhotoGallery({
     setErrorMsg(null);
     setBatch({ done: 0, total: list.length, stage: "fetch" });
     let usedFrames = false;
+    let zipped = false;
+    let missing = 0;
     try {
       const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
@@ -286,18 +294,34 @@ export function PhotoGallery({
         a.href = URL.createObjectURL(blob);
         a.download = `${collectionTitle.replace(unsafeFilename, "_")} - fotos.zip`;
         document.body.appendChild(a);
+        zipped = true;
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-        if (failed.length > 0) {
+        missing = failed.length;
+        if (missing > 0) {
           setErrorMsg(
-            `Se descargaron ${list.length - failed.length} de ${list.length}. Las que faltan las podés bajar de a una con «Descargar».`,
+            `Se descargaron ${list.length - missing} de ${list.length}. Las que faltan las podés bajar de a una con «Descargar».`,
           );
         }
       }
-      setBatch({ done: list.length, total: list.length, stage: usedFrames ? "frames-done" : "done" });
+      setBatch({ done: list.length, total: list.length, stage: usedFrames ? "frames-done" : "done", missing });
     } catch {
-      setErrorMsg(DOWNLOAD_ERRORS.archivo);
+      // A throw rather than refused fetches: most often the jszip chunk is gone
+      // because the site was redeployed while this tab stayed open
+      // (ChunkLoadError, and it fails the same way on every retry), or the ZIP
+      // didn't fit in memory. The per-file endpoint needs neither.
+      if (!zipped && !usedFrames) {
+        usedFrames = true;
+        try {
+          await downloadFrames(list);
+          setBatch({ done: list.length, total: list.length, stage: "frames-done" });
+        } catch {
+          setErrorMsg(DOWNLOAD_ERRORS.archivo);
+        }
+      } else {
+        setErrorMsg(DOWNLOAD_ERRORS.archivo);
+      }
     } finally {
       // Whatever happened, never leave the button stuck. The frames banner
       // lingers longer: the permission prompt may still be waiting.
@@ -507,7 +531,9 @@ export function PhotoGallery({
                         ? `Descargando ${batch.done}/${batch.total}…`
                         : batch.stage === "frames-done"
                           ? "Revisá Descargas"
-                          : "Listo · revisá Descargas"}
+                          : batch.missing
+                            ? `Faltan ${batch.missing} · ver aviso`
+                            : "Listo · revisá Descargas"}
               </span>
               <span className="font-mono text-[10px] tracking-[0.22em] hidden sm:inline transition-transform group-hover:translate-y-0.5">
                 ↓
@@ -517,32 +543,46 @@ export function PhotoGallery({
         </div>
       </header>
 
-      {/* With the viewer open this sits under it; the viewer shows its own. */}
-      {errorMsg && lightboxIdx === null && (
-        <div role="alert" className="border-b border-[color:var(--color-safelight)]/40 bg-[color:var(--color-safelight)]/10">
-          <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-3 flex items-center justify-between gap-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-ink)]">
-              {errorMsg}{" "}
-              <a href={WA_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
-                Escribinos por WhatsApp
-              </a>
-            </p>
-            <button
-              onClick={() => setErrorMsg(null)}
-              className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-500)] hover:text-[color:var(--color-ink)]"
+      {/* Notices float at the bottom. In the page flow they sat above the
+          fold: a buyer scrolled into the grid got a failed download, or a ZIP
+          missing photos, with nothing on screen to say so. With the viewer
+          open these sit under it; the viewer shows its own. */}
+      {lightboxIdx === null && (!!errorMsg || (!!batch && batch.stage !== "done")) && (
+        <div
+          className={`fixed left-1/2 -translate-x-1/2 z-40 w-[min(560px,calc(100vw-32px))] flex flex-col gap-2 ${
+            // Above the selection bar when it's showing.
+            selectMode && selected.size > 0 ? "bottom-28" : "bottom-5"
+          }`}
+        >
+          {batch && batch.stage !== "done" && (
+            <p
+              role="status"
+              className="px-5 py-3 bg-[color:var(--color-ink)] text-[color:var(--color-paper)]/80 font-mono text-[10px] uppercase tracking-[0.18em] leading-[1.7] shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
             >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-      {batch && batch.stage !== "done" && (
-        <div className="border-b border-[color:var(--color-grey-300)] bg-[color:var(--color-grey-100)]">
-          <p className="max-w-[1600px] mx-auto px-6 md:px-10 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-grey-700)]">
-            {batch.stage === "frames" || batch.stage === "frames-done"
-              ? "Si el navegador pregunta, permití descargar varios archivos."
-              : "Juntamos tus fotos en un solo ZIP. No cierres la página."}
-          </p>
+              {batch.stage === "frames" || batch.stage === "frames-done"
+                ? "Si el navegador pregunta, permití descargar varios archivos."
+                : "Juntamos tus fotos en un solo ZIP. No cierres la página."}
+            </p>
+          )}
+          {errorMsg && (
+            <div
+              role="alert"
+              className="px-5 py-4 flex items-start justify-between gap-4 border border-[color:var(--color-safelight)] bg-[color:var(--color-ink)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] leading-[1.7] text-[color:var(--color-paper)]">
+                {errorMsg}{" "}
+                <a href={WA_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                  Escribinos por WhatsApp
+                </a>
+              </p>
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-paper)]/60 hover:text-[color:var(--color-paper)]"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
