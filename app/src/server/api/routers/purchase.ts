@@ -1,27 +1,19 @@
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { z } from "zod";
 import { env } from "~/env";
-import { sendPurchaseApprovedEmail } from "~/lib/email";
+import { logIfUnsent, sendPurchaseApprovedEmail } from "~/lib/email";
 import { createSignedUrl } from "~/lib/supabase/admin";
 import { createS3DownloadUrl, isS3Key } from "~/lib/s3";
 import { parseTiers, calcCartTotal } from "~/lib/pricing";
 import { verifyPackToken } from "~/lib/pack-token";
+import { mpTokenCandidates } from "~/lib/mercadopago";
+import { approvalPhotoCount, parsePhotoIds } from "~/lib/purchase-photos";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 import { db as dbInstance } from "~/server/db";
-
-function parsePhotoIds(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 /**
  * The pack price is flat ("todas las fotos de tu búsqueda"), so the requested set
@@ -59,8 +51,8 @@ async function isLegitimatePackSet(
 }
 
 const getMp = async (db: typeof dbInstance) => {
-  const setting = await db.setting.findUnique({ where: { key: "mp_access_token" } });
-  const token = setting?.value ?? env.MERCADOPAGO_ACCESS_TOKEN;
+  // First candidate = the token the payment webhook also tries first.
+  const [token] = await mpTokenCandidates(db);
   if (!token) throw new Error("MercadoPago no está conectado. Configuralo en /admin/configuracion.");
   return new MercadoPagoConfig({ accessToken: token });
 };
@@ -363,26 +355,32 @@ export const purchaseRouter = createTRPCRouter({
   manualApprove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const token = crypto.randomUUID();
-      const updated = await ctx.db.purchase.update({
+      const purchase = await ctx.db.purchase.findUnique({
         where: { id: input.id },
-        data: { status: "APPROVED", downloadToken: token, downloadTokenExpires: null },
         include: { collection: { select: { title: true } } },
       });
-      const purchasedIds = parsePhotoIds(updated.photoIds);
-      const photoCount = purchasedIds.length > 0
-        ? purchasedIds.length
-        : await ctx.db.photo.count({
-            where: { collectionId: updated.collectionId, bibNumber: updated.bibNumber ?? undefined },
-          });
+      if (!purchase) throw new Error("Compra no encontrada");
+      const photoCount = await approvalPhotoCount(ctx.db, purchase);
+
+      // The same claim as the payment webhook. The sales list can be a few
+      // seconds old, so the purchase may already be approved — by MP's
+      // notification or a second click. Rotating the token then killed the
+      // link in the email the buyer already had and sent them another one.
+      const token = crypto.randomUUID();
+      const claim = await ctx.db.purchase.updateMany({
+        where: { id: input.id, status: { not: "APPROVED" } },
+        data: { status: "APPROVED", downloadToken: token, downloadTokenExpires: null },
+      });
+      if (claim.count === 0) return { approved: false };
+
       void sendPurchaseApprovedEmail({
-        to: updated.buyerEmail,
-        buyerName: updated.buyerName,
-        bibNumber: updated.bibNumber,
-        collectionTitle: updated.collection.title,
+        to: purchase.buyerEmail,
+        buyerName: purchase.buyerName,
+        bibNumber: purchase.bibNumber,
+        collectionTitle: purchase.collection.title,
         downloadToken: token,
         photoCount,
-      });
-      return updated;
+      }).then(logIfUnsent(input.id));
+      return { approved: true };
     }),
 });

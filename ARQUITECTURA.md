@@ -462,25 +462,80 @@ y solo se rotula "Mejor oferta" si además le gana a la selección actual.
 
 ### Webhook — idempotencia
 
-MercadoPago entrega *at-least-once*. La defensa está en
-[route.ts:85-99](app/src/app/api/webhooks/mercadopago/route.ts#L85-L99): un `updateMany` con
+MercadoPago entrega *at-least-once*. La defensa está en `approve()` de
+[route.ts](app/src/app/api/webhooks/mercadopago/route.ts): un `updateMany` con
 `WHERE id = ? AND status != APPROVED` que actúa como claim atómico. Solo la entrega cuyo
 `count === 1` rota el `downloadToken` y manda el email; las demás hacen ACK y salen. Sin esto, una
 entrega duplicada **invalidaba el link ya enviado** y mandaba un segundo email — el bug documentado
-en `BUG-DUPLICATE-DELIVERY-EMAILS.md`, corregido en `eef8c6f`.
+en `BUG-DUPLICATE-DELIVERY-EMAILS.md`, corregido en `eef8c6f`. Todo lo que necesita el email se lee
+**antes** del claim: después, una reentrega ya no manda nada.
+
+### Webhook — varios pagos por compra
+
+Una preferencia de Checkout Pro puede juntar varios pagos con el mismo `external_reference`: un
+ticket de efectivo abandonado por una tarjeta, un primer intento rechazado, hasta dos pagos
+aprobados. Cada notificación habla de **un** pago, así que no puede revocar una compra sola.
+La regla vive en [mp-webhook.ts](app/src/lib/mp-webhook.ts) (`nonApprovalChange`, pura y testeable):
+
+| Compra | Notificación | Resultado |
+|---|---|---|
+| APPROVED | pendiente, rechazado, cancelado, en mediación | nada: no devuelven plata |
+| APPROVED | reembolso o contracargo | se consulta `/v1/payments/search?external_reference=`; revoca solo si no queda otro pago aprobado |
+| REFUNDED | cualquier cosa menos una aprobación | nada: el reembolso es final frente a pagos hermanos viejos |
+| PENDING / REJECTED | lo que sea | refleja el último pago |
+
+El `updateMany` final solo aplica si la fila sigue como estaba cuando se decidió; si una aprobación
+la cambió en el medio, devuelve 503 y la reentrega decide de nuevo.
+
+### Webhook — errores
+
+Un 200 en un error pierde la notificación para siempre: MercadoPago no la vuelve a mandar y la
+compra queda PENDING aunque el comprador haya pagado. Por eso el handler contesta **503** (y MP
+reintenta durante días) cuando:
+
+- no pudo leer el pago con ningún token por algo distinto de un 404 (token vencido, rate limit,
+  MP caído);
+- un reembolso necesita la búsqueda de pagos y esta falló de forma transitoria (timeout, 429, 5xx);
+- la fila cambió entre la decisión y la escritura;
+- falla la base.
+
+Todos los caminos son idempotentes, así que reintentar es seguro. Solo contesta 200 sin hacer
+nada cuando todas las cuentas respondieron 404 (el pago no es nuestro) o la notificación no es de
+un pago.
+
+La aprobación manual (`purchase.manualApprove`) usa el mismo claim: aprobar desde una lista
+desactualizada una compra que el webhook ya aprobó no rota el token ni manda un segundo email.
+
+**Límite conocido:** el email de aprobación es *fire-and-forget* después del claim. Si Resend falla
+(rate limit, cuota), queda en el log como `[email] approval email not sent` con el `purchaseId`,
+pero ninguna reentrega lo reintenta: el admin tiene que usar "Email" en Ventas, que ahora avisa
+"✗ No se envió" si Resend lo rechaza. Resolverlo del todo necesita una columna
+`approvalEmailSentAt`. Los tres caminos que mandan ese email (webhook, aprobación manual, reenvío)
+cuentan las fotos con `approvalPhotoCount` en [purchase-photos.ts](app/src/lib/purchase-photos.ts).
+
+Caso concreto: si el token OAuth vence y un ticket de efectivo se acredita en esa ventana, la
+compra se aprueba sola cuando el admin reconecta, en vez de quedar perdida.
 
 La firma se valida con HMAC-SHA256 sobre `id:{requestId};request-id:{requestId};ts:{ts};{body}`.
-Si `MERCADOPAGO_WEBHOOK_SECRET` no está seteado, **la verificación se saltea** (`return true`) —
-aceptable en dev, obligatorio configurarlo en producción.
-
-El handler devuelve `200 {received:true}` ante cualquier error, incluido el `catch` general, para
-que MercadoPago no reintente indefinidamente.
+Si `MERCADOPAGO_WEBHOOK_SECRET` no está seteado, **la verificación se saltea** (`return true`).
+**Ojo antes de configurarlo:** la documentación de MercadoPago arma el manifest como
+`id:{data.id};request-id:{x-request-id};ts:{ts};`, con el id del pago y sin el body. Con el formato
+actual es probable que toda notificación firmada dé 401 y ninguna compra se apruebe. Probarlo con
+una notificación real antes de setear el secreto en producción.
 
 ### Credenciales de MercadoPago
 
-`getMp()` prioriza `Setting["mp_access_token"]` (obtenido por OAuth desde
-`/admin/configuracion`) y cae a `MERCADOPAGO_ACCESS_TOKEN` del entorno. El flujo OAuth usa una
-cookie `mp_oauth_state` para protección CSRF.
+`mpTokenCandidates()` en [mercadopago.ts](app/src/lib/mercadopago.ts) devuelve
+`Setting["mp_access_token"]` (obtenido por OAuth desde `/admin/configuracion`) y después
+`MERCADOPAGO_ACCESS_TOKEN` del entorno. El checkout usa el primero; el webhook los prueba en ese
+orden, así lee los pagos de la misma cuenta que los cobró. El flujo OAuth usa una cookie
+`mp_oauth_state` para protección CSRF.
+
+Los tokens OAuth vencen a los **180 días** y nada los renueva. El callback guarda el vencimiento
+(`mp_token_expires_at`, de `expires_in`), y `settings.getMpStatus` lo cruza con un chequeo en vivo
+contra `/users/me`. El modal `MercadoPagoExpiryModal` avisa en todo el admin: a 30 días
+(posponible 24 h), a 7 días (vuelve en cada sesión) y cuando MercadoPago ya rechaza el token.
+Reconectar pasa de nuevo por OAuth y pisa el token en el lugar, sin cortar las ventas.
 
 > Inconsistencia: `createPreference` usa el token de `Setting`, pero el webhook consulta el pago
 > siempre con `env.MERCADOPAGO_ACCESS_TOKEN`. Si solo se conectó por OAuth, el `fetch` a

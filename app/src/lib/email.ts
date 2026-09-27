@@ -115,6 +115,10 @@ function purchaseApprovedHtml({
 </html>`;
 }
 
+export type EmailResult =
+  | { sent: true }
+  | { sent: false; reason: string; statusCode?: number | null };
+
 export async function sendPurchaseApprovedEmail({
   to,
   buyerName,
@@ -129,22 +133,44 @@ export async function sendPurchaseApprovedEmail({
   collectionTitle: string;
   downloadToken: string;
   photoCount?: number;
-}) {
+}): Promise<EmailResult> {
   const resend = getResend();
-  if (!resend) return;
+  if (!resend) return { sent: false, reason: "no-api-key" };
 
   const downloadUrl = `${BASE_URL}/descarga/${downloadToken}`;
   const bib = bibNumber ? `dorsal #${bibNumber}` : collectionTitle;
 
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: FROM,
       to,
       bcc: BCC_EMAIL,
       subject: `Tus fotos de ${bib} están listas — Ivana Maritano`,
       html: purchaseApprovedHtml({ buyerName, bibNumber, collectionTitle, downloadUrl, photoCount }),
     });
+    // Resend reports failures (rate limit, quota, rejected address) in the
+    // result instead of throwing, so ignoring it hid every one of them — and
+    // the resend button in Ventas said "Enviado" regardless.
+    if (error) return { sent: false, reason: error.name, statusCode: error.statusCode };
+    return { sent: true };
   } catch (err) {
-    console.error("[Resend] Error sending email:", err);
+    return { sent: false, reason: err instanceof Error ? err.name : "exception" };
   }
 }
+
+/**
+ * For callers that don't wait on the send: logs a failure with the purchase
+ * it belongs to, so the admin knows whose link to resend. Kind and status
+ * only; Resend's message can quote the recipient.
+ */
+export const logIfUnsent =
+  (purchaseId: string) =>
+  (result: EmailResult): void => {
+    if (!result.sent) {
+      console.error("[email] approval email not sent", {
+        purchaseId,
+        reason: result.reason,
+        statusCode: result.statusCode ?? null,
+      });
+    }
+  };

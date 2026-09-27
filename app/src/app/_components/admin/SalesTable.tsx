@@ -23,15 +23,26 @@ export function SalesTable({ items }: { items: Sale[] }) {
   const [confirmSale, setConfirmSale] = useState<Sale | null>(null);
   const [emailSentId, setEmailSentId] = useState<string | null>(null);
 
+  const utils = api.useUtils();
   const approve = api.purchase.manualApprove.useMutation({
-    onSuccess: () => router.refresh(),
+    onSuccess: () => {
+      // The list comes from React Query, which router.refresh() doesn't touch:
+      // without this the row kept its "Aprobar" button.
+      void utils.purchase.invalidate();
+      router.refresh();
+    },
   });
 
+  const [emailError, setEmailError] = useState<{ id: string; message: string } | null>(null);
   const resendEmail = api.settings.resendPurchaseEmail.useMutation({
     onSuccess: (_, { purchaseId }) => {
+      setEmailError(null);
       setEmailSentId(purchaseId);
       setTimeout(() => setEmailSentId(null), 2500);
     },
+    // Stays until the next try: the admin has to know this buyer still has
+    // no link, and "↗ Link" is right there to send it by hand.
+    onError: (err, { purchaseId }) => setEmailError({ id: purchaseId, message: err.message }),
   });
 
   const copyDownloadLink = (token: string, id: string) => {
@@ -127,9 +138,18 @@ export function SalesTable({ items }: { items: Sale[] }) {
                       <button
                         onClick={() => resendEmail.mutate({ purchaseId: sale.id })}
                         disabled={resendEmail.isPending}
-                        className="px-2.5 py-1 border border-[color:var(--color-grey-300)] font-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)] transition-colors disabled:opacity-40"
+                        title={emailError?.id === sale.id ? emailError.message : undefined}
+                        className={`px-2.5 py-1 border font-mono text-[9px] uppercase tracking-[0.12em] transition-colors disabled:opacity-40 ${
+                          emailError?.id === sale.id
+                            ? "border-[color:var(--color-safelight)] text-[color:var(--color-safelight)]"
+                            : "border-[color:var(--color-grey-300)] text-[color:var(--color-grey-600)] hover:border-[color:var(--color-ink)] hover:text-[color:var(--color-ink)]"
+                        }`}
                       >
-                        {emailSentId === sale.id ? "✓ Enviado" : "Email"}
+                        {emailSentId === sale.id
+                          ? "✓ Enviado"
+                          : emailError?.id === sale.id
+                            ? "✗ No se envió"
+                            : "Email"}
                       </button>
                     </>
                   )}

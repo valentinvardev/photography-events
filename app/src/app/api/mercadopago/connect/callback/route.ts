@@ -50,7 +50,12 @@ export async function GET(request: Request) {
     access_token: string;
     refresh_token?: string;
     user_id?: number;
+    expires_in?: number;
   };
+
+  // Read before overwriting: reconnecting with a different MP account silently
+  // moves where every future payment lands.
+  const previousUser = await db.setting.findUnique({ where: { key: "mp_user_id" } });
 
   await db.setting.upsert({
     where: { key: "mp_access_token" },
@@ -74,5 +79,20 @@ export async function GET(request: Request) {
     });
   }
 
-  redirect("/admin/configuracion?mp=connected");
+  // The exact expiry, so the admin warning doesn't have to estimate it. If MP
+  // ever omits expires_in, drop any stale date and fall back to the estimate.
+  if (data.expires_in) {
+    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
+    await db.setting.upsert({
+      where: { key: "mp_token_expires_at" },
+      update: { value: expiresAt },
+      create: { key: "mp_token_expires_at", value: expiresAt },
+    });
+  } else {
+    await db.setting.deleteMany({ where: { key: "mp_token_expires_at" } });
+  }
+
+  const switchedAccount =
+    !!previousUser && !!data.user_id && previousUser.value !== String(data.user_id);
+  redirect(`/admin/configuracion?mp=${switchedAccount ? "otra-cuenta" : "connected"}`);
 }
